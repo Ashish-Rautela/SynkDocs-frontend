@@ -7,6 +7,7 @@ const initialState = {
   recentDocuments: [],
   sharedDocuments: [],
   versionHistory: [],
+  searchResults: null,
   searchQuery: '',
   filterCategory: 'all', // 'all' | 'recent' | 'starred' | 'shared'
   loading: false,
@@ -25,13 +26,15 @@ const documentSlice = createSlice({
     },
     fetchDocumentsSuccess: (state, action) => {
       state.loading = false;
-      state.documents = action.payload;
-      state.recentDocuments = [...action.payload].sort(
+      const docs = Array.isArray(action.payload) ? action.payload : [];
+      state.documents = docs;
+      state.recentDocuments = [...docs].sort(
         (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
       );
-      state.starredDocuments = action.payload.filter((doc) => doc.isStarred);
-      state.sharedDocuments = action.payload.filter((doc) => doc.isShared);
+      state.starredDocuments = docs.filter((doc) => doc.isStarred);
+      state.sharedDocuments = docs.filter((doc) => doc.isShared);
     },
+
     fetchDocumentsFailure: (state, action) => {
       state.loading = false;
       state.error = action.payload;
@@ -110,6 +113,9 @@ const documentSlice = createSlice({
     setSearchQuery: (state, action) => {
       state.searchQuery = action.payload;
     },
+    setSearchResults: (state, action) => {
+      state.searchResults = action.payload;
+    },
     setFilterCategory: (state, action) => {
       state.filterCategory = action.payload;
     },
@@ -136,7 +142,9 @@ export const {
   fetchVersionHistoryStart,
   fetchVersionHistorySuccess,
   setSearchQuery,
+  setSearchResults,
   setFilterCategory,
 } = documentSlice.actions;
 
 export default documentSlice.reducer;
+

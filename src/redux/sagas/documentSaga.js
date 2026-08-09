@@ -1,5 +1,6 @@
 import { takeLatest, call, put } from 'redux-saga/effects';
 import { documentApi } from '../../services/documentApi';
+import { searchApi } from '../../services/searchApi';
 import {
   fetchDocumentsStart,
   fetchDocumentsSuccess,
@@ -19,6 +20,8 @@ import {
   deleteDocumentSuccess,
   fetchVersionHistoryStart,
   fetchVersionHistorySuccess,
+  setSearchQuery,
+  setSearchResults,
 } from '../slices/documentSlice';
 import { addToast } from '../slices/notificationSlice';
 
@@ -49,12 +52,16 @@ function* handleCreateDocument(action) {
     const data = yield call(documentApi.createDocument, action.payload);
     yield put(createDocumentSuccess(data));
     yield put(addToast({ type: 'success', message: 'New document created!' }));
+    if (action.payload?.onSuccess) {
+      action.payload.onSuccess(data);
+    }
   } catch (error) {
     const msg = error.message || 'Failed to create document';
     yield put(createDocumentFailure(msg));
     yield put(addToast({ type: 'error', message: msg }));
   }
 }
+
 
 function* handleSaveDocument(action) {
   try {
@@ -95,6 +102,20 @@ function* handleFetchVersionHistory(action) {
   }
 }
 
+function* handleSearchDocuments(action) {
+  try {
+    const query = action.payload;
+    if (!query) {
+      yield put(setSearchResults(null));
+      return;
+    }
+    const results = yield call(searchApi.searchDocuments, query);
+    yield put(setSearchResults(results));
+  } catch (error) {
+    console.warn('Search API error:', error);
+  }
+}
+
 export function* documentSaga() {
   yield takeLatest(fetchDocumentsStart.type, handleFetchDocuments);
   yield takeLatest(fetchDocumentByIdStart.type, handleFetchDocumentById);
@@ -103,4 +124,6 @@ export function* documentSaga() {
   yield takeLatest(toggleStarStart.type, handleToggleStar);
   yield takeLatest(deleteDocumentStart.type, handleDeleteDocument);
   yield takeLatest(fetchVersionHistoryStart.type, handleFetchVersionHistory);
+  yield takeLatest(setSearchQuery.type, handleSearchDocuments);
 }
+

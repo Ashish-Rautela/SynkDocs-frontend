@@ -2,7 +2,7 @@ import axios from 'axios';
 import { tokenStorage } from '../utils/tokenStorage';
 import { API_ENDPOINTS } from '../constants/apiEndpoints';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.synkdocs.example.com/v1';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://synkapi.ashishrautela.in';
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -29,8 +29,8 @@ const processQueue = (error, token = null) => {
 // JWT Request Interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    const token = tokenStorage.getAccessToken();
-    if (token) {
+    const token = localStorage.getItem('accessToken') || tokenStorage.getAccessToken();
+    if (token && token !== 'undefined' && token !== 'null') {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -60,7 +60,7 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = tokenStorage.getRefreshToken();
+        const refreshToken = localStorage.getItem('refreshToken') || tokenStorage.getRefreshToken();
         if (!refreshToken) {
           throw new Error('No refresh token available');
         }
@@ -69,13 +69,16 @@ apiClient.interceptors.response.use(
           refreshToken,
         });
 
-        tokenStorage.setAccessToken(data.accessToken);
-        if (data.refreshToken) {
-          tokenStorage.setRefreshToken(data.refreshToken);
+        const newAccessToken = data?.data?.accessToken || data?.accessToken;
+        if (!newAccessToken) {
+          throw new Error('Invalid refresh token response');
         }
 
-        processQueue(null, data.accessToken);
-        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+        tokenStorage.setAccessToken(newAccessToken);
+        localStorage.setItem('accessToken', newAccessToken);
+
+        processQueue(null, newAccessToken);
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
@@ -90,3 +93,4 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+

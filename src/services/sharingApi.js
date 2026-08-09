@@ -1,32 +1,45 @@
 import { apiClient } from './api';
 import { API_ENDPOINTS } from '../constants/apiEndpoints';
 
-const USE_MOCK = import.meta.env.VITE_ENABLE_MOCK_API !== 'false';
-const mockDelay = (ms = 400) => new Promise((resolve) => setTimeout(resolve, ms));
+const ensureArray = (resData) => {
+  if (Array.isArray(resData)) return resData;
+  if (resData && typeof resData === 'object') {
+    if (Array.isArray(resData.data)) return resData.data;
+    if (Array.isArray(resData.collaborators)) return resData.collaborators;
+    if (resData.data && typeof resData.data === 'object') {
+      if (Array.isArray(resData.data.collaborators)) return resData.data.collaborators;
+    }
+  }
+  return [];
+};
 
 export const sharingApi = {
-  shareDocument: async ({ documentId, email, role = 'VIEWER' }) => {
-    if (USE_MOCK) {
-      await mockDelay();
-      return {
-        id: `collab-${Date.now()}`,
-        documentId,
-        email,
-        role,
-        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-        name: email.split('@')[0],
-      };
-    }
-    const response = await apiClient.post(API_ENDPOINTS.DOCUMENTS.SHARE(documentId), { email, role });
-    return response.data;
+  shareDocument: async ({ documentId, targetUserId, role = 'EDITOR' }) => {
+    const isEmail = targetUserId && targetUserId.includes('@');
+    const response = await apiClient.post(API_ENDPOINTS.SHARING.SHARE, {
+      documentId,
+      targetUserId,
+      email: isEmail ? targetUserId : undefined,
+      role,
+    });
+    const data = response.data?.data || response.data || {};
+    return {
+      ...data,
+      id: data.userId || data.targetUserId || targetUserId,
+      userId: data.userId || data.targetUserId || targetUserId,
+      role: data.role || role,
+    };
   },
 
-  updatePermission: async ({ documentId, userId, role }) => {
-    if (USE_MOCK) {
-      await mockDelay(200);
-      return { documentId, userId, role };
-    }
-    const response = await apiClient.put(API_ENDPOINTS.DOCUMENTS.SHARE(documentId), { userId, role });
-    return response.data;
+  getCollaborators: async (documentId) => {
+    const response = await apiClient.get(API_ENDPOINTS.SHARING.COLLABORATORS(documentId));
+    const list = ensureArray(response.data);
+    return list.map((collab) => ({
+      ...collab,
+      id: collab.userId || collab.id,
+      userId: collab.userId || collab.id,
+    }));
   },
 };
+
+

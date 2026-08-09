@@ -49,9 +49,18 @@ export const DashboardPage = () => {
   ];
 
   const handleCreateFromTemplate = (template) => {
-    createDocument({ title: template.title === 'Blank Document' ? 'Untitled Document' : template.title, content: template.content });
-    navigate(ROUTES.EDITOR_BUILDER('doc-new-' + Date.now()));
+    createDocument({
+      title: template.title === 'Blank Document' ? 'Untitled Document' : template.title,
+      content: template.content,
+      onSuccess: (newDoc) => {
+        const docId = newDoc.documentId || newDoc.id;
+        if (docId) {
+          navigate(ROUTES.EDITOR_BUILDER(docId));
+        }
+      },
+    });
   };
+
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">

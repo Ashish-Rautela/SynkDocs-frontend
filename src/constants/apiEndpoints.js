@@ -1,20 +1,23 @@
 export const API_ENDPOINTS = {
   AUTH: {
-    LOGIN: '/auth/login',
     REGISTER: '/auth/register',
+    LOGIN: '/auth/login',
     REFRESH_TOKEN: '/auth/refresh-token',
-    LOGOUT: '/auth/logout',
-    ME: '/auth/me',
-  },
-  DOCUMENTS: {
-    BASE: '/documents',
-    BY_ID: (id) => `/documents/${id}`,
-    STAR: (id) => `/documents/${id}/star`,
-    SHARE: (id) => `/documents/${id}/share`,
-    VERSIONS: (id) => `/documents/${id}/versions`,
+    HEALTH: '/auth/health',
   },
   USER: {
-    PROFILE: '/user/profile',
-    SETTINGS: '/user/settings',
+    PROFILE: '/users/profile',
+  },
+  DOCUMENTS: {
+    BASE: '/documents/documents',
+    BY_ID: (documentId) => `/documents/documents/${documentId}`,
+  },
+  SHARING: {
+    SHARE: '/sharing/documents/share',
+    COLLABORATORS: (documentId) => `/sharing/documents/${documentId}/collaborators`,
+  },
+  SEARCH: {
+    DOCUMENTS: (query) => `/search/documents/search?q=${encodeURIComponent(query)}`,
   },
 };
+

@@ -1,9 +1,11 @@
 import React, { useRef, useEffect } from 'react';
 import { useEditor } from '../../hooks/useEditor';
+import { useAuth } from '../../hooks/useAuth';
 import { socketService } from '../../socket/socket';
 
 export const DocumentCanvas = ({ documentId }) => {
   const { content, updateContent } = useEditor();
+  const { user } = useAuth();
   const editorRef = useRef(null);
 
   // Sync content with ref on initial load or remote change
@@ -16,14 +18,18 @@ export const DocumentCanvas = ({ documentId }) => {
   // Join document socket channel
   useEffect(() => {
     if (documentId) {
-      socketService.joinDocument(documentId, { id: 'usr-101', name: 'Sarah Jenkins' });
+      const activeUser = {
+        id: user?.userId || user?.id || 'anonymous_user',
+        name: user?.name || user?.email || 'Active User',
+      };
+      socketService.joinDocument(documentId, activeUser);
     }
     return () => {
       if (documentId) {
         socketService.leaveDocument(documentId);
       }
     };
-  }, [documentId]);
+  }, [documentId, user]);
 
   const handleInput = () => {
     if (editorRef.current) {

@@ -13,9 +13,17 @@ export const Header = ({ showSearch = true }) => {
   const navigate = useNavigate();
 
   const handleCreateNew = () => {
-    createDocument({ title: 'Untitled Document' });
-    navigate(ROUTES.EDITOR_BUILDER('new-' + Date.now()));
+    createDocument({
+      title: 'Untitled Document',
+      onSuccess: (newDoc) => {
+        const docId = newDoc.documentId || newDoc.id;
+        if (docId) {
+          navigate(ROUTES.EDITOR_BUILDER(docId));
+        }
+      },
+    });
   };
+
 
   const userMenuItems = [
     { label: 'Profile Settings', icon: User, onClick: () => navigate(ROUTES.PROFILE) },

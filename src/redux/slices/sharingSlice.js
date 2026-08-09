@@ -12,6 +12,18 @@ const sharingSlice = createSlice({
   name: 'sharing',
   initialState,
   reducers: {
+    fetchCollaboratorsStart: (state) => {
+      state.loading = true;
+      state.error = null;
+    },
+    fetchCollaboratorsSuccess: (state, action) => {
+      state.loading = false;
+      state.collaborators = action.payload;
+    },
+    fetchCollaboratorsFailure: (state, action) => {
+      state.loading = false;
+      state.error = action.payload;
+    },
     shareDocumentStart: (state) => {
       state.loading = true;
       state.error = null;
@@ -29,9 +41,10 @@ const sharingSlice = createSlice({
     },
     updatePermissionSuccess: (state, action) => {
       state.loading = false;
-      const { email, role } = action.payload;
+      const { targetUserId, userId, role } = action.payload;
+      const target = targetUserId || userId;
       state.collaborators = state.collaborators.map((c) =>
-        c.email === email ? { ...c, role } : c
+        (c.userId === target || c.id === target) ? { ...c, role } : c
       );
     },
     setGeneralAccess: (state, action) => {
@@ -45,6 +58,9 @@ const sharingSlice = createSlice({
 });
 
 export const {
+  fetchCollaboratorsStart,
+  fetchCollaboratorsSuccess,
+  fetchCollaboratorsFailure,
   shareDocumentStart,
   shareDocumentSuccess,
   shareDocumentFailure,
@@ -55,3 +71,4 @@ export const {
 } = sharingSlice.actions;
 
 export default sharingSlice.reducer;
+

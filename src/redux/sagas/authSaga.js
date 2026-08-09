@@ -16,14 +16,21 @@ import { addToast } from '../slices/notificationSlice';
 function* handleLogin(action) {
   try {
     const data = yield call(authApi.login, action.payload);
-    tokenStorage.setAccessToken(data.accessToken);
-    tokenStorage.setRefreshToken(data.refreshToken);
-    tokenStorage.setUser(data.user);
+    const token = data.accessToken || data.token;
+    if (token) {
+      tokenStorage.setAccessToken(token);
+    }
+    if (data.refreshToken) {
+      tokenStorage.setRefreshToken(data.refreshToken);
+    }
+    if (data.user) {
+      tokenStorage.setUser(data.user);
+    }
 
     yield put(loginSuccess(data));
-    yield put(addToast({ type: 'success', message: `Welcome back, ${data.user.name}!` }));
+    yield put(addToast({ type: 'success', message: `Welcome back, ${data.user?.name || 'User'}!` }));
   } catch (error) {
-    const message = error.message || 'Login failed. Please check credentials.';
+    const message = error.response?.data?.message || error.message || 'Login failed. Please check credentials.';
     yield put(loginFailure(message));
     yield put(addToast({ type: 'error', message }));
   }
@@ -32,18 +39,26 @@ function* handleLogin(action) {
 function* handleRegister(action) {
   try {
     const data = yield call(authApi.register, action.payload);
-    tokenStorage.setAccessToken(data.accessToken);
-    tokenStorage.setRefreshToken(data.refreshToken);
-    tokenStorage.setUser(data.user);
+    const token = data.accessToken || data.token;
+    if (token) {
+      tokenStorage.setAccessToken(token);
+    }
+    if (data.refreshToken) {
+      tokenStorage.setRefreshToken(data.refreshToken);
+    }
+    if (data.user) {
+      tokenStorage.setUser(data.user);
+    }
 
     yield put(registerSuccess(data));
     yield put(addToast({ type: 'success', message: 'Account created successfully!' }));
   } catch (error) {
-    const message = error.message || 'Registration failed.';
+    const message = error.response?.data?.message || error.message || 'Registration failed.';
     yield put(registerFailure(message));
     yield put(addToast({ type: 'error', message }));
   }
 }
+
 
 function* handleLogout() {
   try {
