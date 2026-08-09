@@ -158,10 +158,10 @@ export const DashboardPage = () => {
               <div
                 key={doc.id}
                 onClick={() => navigate(ROUTES.EDITOR_BUILDER(doc.id))}
-                className="bg-white border border-docs-border rounded-2xl overflow-hidden hover:shadow-docs-card transition-all group cursor-pointer flex flex-col justify-between"
+                className="bg-white border border-docs-border rounded-2xl hover:shadow-docs-card transition-all group cursor-pointer flex flex-col justify-between relative z-10 hover:z-30"
               >
                 {/* Paper Preview Header */}
-                <div className="h-36 bg-docs-bg p-4 border-b border-docs-border flex flex-col justify-between relative overflow-hidden">
+                <div className="h-36 bg-docs-bg p-4 border-b border-docs-border rounded-t-2xl flex flex-col justify-between relative overflow-hidden">
                   <div className="text-[10px] text-docs-subtext line-clamp-4 leading-relaxed select-none">
                     {doc.content.replace(/<[^>]*>?/gm, '') || 'Empty document content preview...'}
                   </div>
@@ -210,7 +210,7 @@ export const DashboardPage = () => {
           </div>
         ) : (
           /* List View */
-          <div className="bg-white border border-docs-border rounded-2xl overflow-hidden divide-y divide-docs-border">
+          <div className="bg-white border border-docs-border rounded-2xl divide-y divide-docs-border">
             {filteredDocuments.map((doc) => (
               <div
                 key={doc.id}
