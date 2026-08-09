@@ -18,9 +18,10 @@ export const profileApi = {
     const response = await apiClient.put(API_ENDPOINTS.USER.PROFILE, {
       name: profileData.name,
       bio: profileData.bio,
+      avatarUrl: profileData.avatarUrl,
     });
     // Response (200 OK):
-    // { success: true, message: "Profile updated successfully", data: { name: "...", bio: "..." } }
+    // { success: true, message: "Profile updated successfully", data: { name: "...", bio: "...", avatarUrl: "..." } }
     const data = response.data?.data || response.data;
     return data;
   },

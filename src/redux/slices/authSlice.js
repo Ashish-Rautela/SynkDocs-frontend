@@ -61,6 +61,10 @@ const authSlice = createSlice({
     clearAuthError: (state) => {
       state.error = null;
     },
+    updateUser: (state, action) => {
+      state.user = { ...state.user, ...action.payload };
+      tokenStorage.setUser(state.user);
+    },
   },
 });
 
@@ -74,6 +78,7 @@ export const {
   logoutStart,
   logoutSuccess,
   clearAuthError,
+  updateUser,
 } = authSlice.actions;
 
 export default authSlice.reducer;

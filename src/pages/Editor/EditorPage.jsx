@@ -1,9 +1,11 @@
-import React, { useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { useDocument } from '../../hooks/useDocument';
 import { useEditor } from '../../hooks/useEditor';
 import { useAuth } from '../../hooks/useAuth';
 import { socketService } from '../../socket/socket';
+import { resetEditorState } from '../../redux/slices/editorSlice';
 import { EditorNavbar } from '../../components/editor/EditorNavbar';
 import { EditorToolbar } from '../../components/editor/EditorToolbar';
 import { DocumentCanvas } from '../../components/editor/DocumentCanvas';
@@ -18,21 +20,54 @@ import { ToastContainer } from '../../components/common/ToastContainer';
 
 export const EditorPage = () => {
   const { id } = useParams();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { fetchDocumentById, currentDocument, loading, error } = useDocument();
   const { loadDocument, content } = useEditor();
   const { user, token } = useAuth();
+  const loadTimeoutRef = useRef(null);
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
+    hasLoadedRef.current = false;
+
     if (id) {
       fetchDocumentById(id);
     }
-  }, [id]);
+
+    // Safety timeout: if after 15 seconds we still have no document and no error,
+    // something went wrong silently. Set a fallback so user isn't stuck on loader forever.
+    loadTimeoutRef.current = setTimeout(() => {
+      if (!hasLoadedRef.current) {
+        console.warn('[EditorPage] Load timeout — navigating to dashboard');
+        navigate('/dashboard', { replace: true });
+      }
+    }, 15000);
+
+    return () => {
+      dispatch(resetEditorState());
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
+      }
+    };
+  }, [id, dispatch]);
+
+  // Track when document has loaded successfully
+  useEffect(() => {
+    if (currentDocument || error) {
+      hasLoadedRef.current = true;
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
+        loadTimeoutRef.current = null;
+      }
+    }
+  }, [currentDocument, error]);
 
   useEffect(() => {
     if (currentDocument) {
       loadDocument({
-        title: currentDocument.title,
-        content: currentDocument.content,
+        title: currentDocument.title || 'Untitled Document',
+        content: currentDocument.content || '',
       });
     }
   }, [currentDocument?.id || currentDocument?.documentId]);
@@ -53,14 +88,24 @@ export const EditorPage = () => {
         socketService.leaveDocument(id);
       }
     };
-  }, [id, user]);
+  }, [id, user, token]);
 
   const isAccessDenied = !!error && !currentDocument;
 
-  const isDataSheet = (content && content.includes('<!-- TYPE:DATASHEET -->')) || (currentDocument?.content && currentDocument.content.includes('<!-- TYPE:DATASHEET -->'));
-  const isNotesCanvas = (content && content.includes('<!-- TYPE:NOTES -->')) || (currentDocument?.content && currentDocument.content.includes('<!-- TYPE:NOTES -->'));
+  const strContent = typeof content === 'string' ? content : '';
+  const strDocContent = typeof currentDocument?.content === 'string' ? currentDocument.content : '';
 
-  if (loading && !currentDocument && !error) {
+  const isDataSheet = strContent.includes('<!-- TYPE:DATASHEET -->') || strDocContent.includes('<!-- TYPE:DATASHEET -->');
+  const isNotesCanvas = strContent.includes('<!-- TYPE:NOTES -->') || strDocContent.includes('<!-- TYPE:NOTES -->');
+
+  // Show loader while loading, but NOT if we have an error (to show AccessDeniedModal)
+  if (loading && !error) {
+    return <Loader fullPage text="Loading document workspace..." />;
+  }
+
+  // If neither loading nor document loaded and no error yet, show loader briefly
+  // (this covers the brief gap between mount and saga dispatch)
+  if (!currentDocument && !error && !loading) {
     return <Loader fullPage text="Loading document workspace..." />;
   }
 

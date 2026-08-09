@@ -69,7 +69,12 @@ apiClient.interceptors.response.use(
       try {
         const refreshToken = localStorage.getItem('refreshToken') || tokenStorage.getRefreshToken();
         if (!refreshToken) {
-          throw new Error('No refresh token available');
+          // No refresh token — force logout and reject with the ORIGINAL error
+          // so the calling code (e.g. documentSaga) sees the real 401/403/404 message,
+          // not a misleading "No refresh token available" message.
+          tokenStorage.clearAll();
+          window.dispatchEvent(new Event('auth:logout'));
+          return Promise.reject(error);
         }
 
         const { data } = await axios.post(`${BASE_URL}${API_ENDPOINTS.AUTH.REFRESH_TOKEN}`, {
@@ -78,7 +83,7 @@ apiClient.interceptors.response.use(
 
         const newAccessToken = data?.data?.accessToken || data?.accessToken;
         if (!newAccessToken) {
-          throw new Error('Invalid refresh token response');
+          throw new Error('Session expired. Please log in again.');
         }
 
         tokenStorage.setAccessToken(newAccessToken);
@@ -91,7 +96,8 @@ apiClient.interceptors.response.use(
         processQueue(refreshError, null);
         tokenStorage.clearAll();
         window.dispatchEvent(new Event('auth:logout'));
-        return Promise.reject(refreshError);
+        // Reject with the original error if refresh failed, preserving the real status code
+        return Promise.reject(error);
       } finally {
         isRefreshing = false;
       }

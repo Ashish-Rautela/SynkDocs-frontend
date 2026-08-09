@@ -102,14 +102,8 @@ export const ProfilePage = () => {
             <Input
               label="Email Address"
               icon={Mail}
-              {...register('email', {
-                required: 'Email is required',
-                pattern: {
-                  value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                  message: 'Please enter a valid email address',
-                },
-              })}
-              error={errors.email?.message}
+              disabled
+              {...register('email')}
             />
           </div>
 

@@ -9,11 +9,13 @@ import {
   updateProfileFailure,
 } from '../slices/profileSlice';
 import { addToast } from '../slices/notificationSlice';
+import { updateUser } from '../slices/authSlice';
 
 function* handleFetchProfile() {
   try {
     const data = yield call(profileApi.getProfile);
     yield put(fetchProfileSuccess(data));
+    yield put(updateUser(data));
   } catch (error) {
     const msg = error.message || 'Failed to fetch user profile';
     yield put(fetchProfileFailure(msg));
@@ -25,6 +27,7 @@ function* handleUpdateProfile(action) {
   try {
     const updated = yield call(profileApi.updateProfile, action.payload);
     yield put(updateProfileSuccess(updated));
+    yield put(updateUser(updated));
     yield put(addToast({ type: 'success', message: 'Profile updated successfully' }));
   } catch (error) {
     const msg = error.message || 'Failed to update profile';

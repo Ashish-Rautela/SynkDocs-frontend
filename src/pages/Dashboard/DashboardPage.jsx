@@ -77,10 +77,10 @@ export const DashboardPage = () => {
   const getDocumentPreviewText = (content) => {
     if (!content) return 'Empty document content preview...';
     if (content.includes('<!-- TYPE:DATASHEET -->')) {
-      return '📊 Interactive Data Sheet Grid (Tables & Formulas)';
+      return 'Interactive Data Sheet Grid (Tables & Formulas)';
     }
     if (content.includes('<!-- TYPE:NOTES -->')) {
-      return '📝 Handwritten & Typed Note Pad';
+      return 'Handwritten & Typed Note Pad';
     }
     if (content.trim().startsWith('{') || content.trim().startsWith('[')) {
       return 'Document workspace content';

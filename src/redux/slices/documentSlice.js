@@ -42,6 +42,7 @@ const documentSlice = createSlice({
     fetchDocumentByIdStart: (state) => {
       state.loading = true;
       state.error = null;
+      state.currentDocument = null; // Clear old document state to prevent stale page state
     },
     fetchDocumentByIdSuccess: (state, action) => {
       state.loading = false;
@@ -50,6 +51,7 @@ const documentSlice = createSlice({
     fetchDocumentByIdFailure: (state, action) => {
       state.loading = false;
       state.error = action.payload;
+      state.currentDocument = null;
     },
     createDocumentStart: (state) => {
       state.loading = true;
@@ -69,13 +71,13 @@ const documentSlice = createSlice({
     },
     saveDocumentSuccess: (state, action) => {
       state.saving = false;
-      if (state.currentDocument && state.currentDocument.id === action.payload.id) {
+      if (state.currentDocument && (state.currentDocument.id === action.payload.id || state.currentDocument.documentId === action.payload.id)) {
         state.currentDocument.title = action.payload.title;
         state.currentDocument.content = action.payload.content;
         state.currentDocument.updatedAt = action.payload.updatedAt;
       }
       state.documents = state.documents.map((doc) =>
-        doc.id === action.payload.id ? { ...doc, ...action.payload } : doc
+        doc.id === action.payload.id || doc.documentId === action.payload.id ? { ...doc, ...action.payload } : doc
       );
     },
     saveDocumentFailure: (state, action) => {
@@ -147,4 +149,3 @@ export const {
 } = documentSlice.actions;
 
 export default documentSlice.reducer;
-

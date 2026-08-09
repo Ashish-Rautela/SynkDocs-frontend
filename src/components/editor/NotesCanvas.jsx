@@ -57,23 +57,29 @@ export const NotesCanvas = ({ documentId }) => {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (pageObj?.drawingData) {
-      const img = new Image();
-      img.onload = () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0);
-      };
-      img.src = pageObj.drawingData;
-    }
-
     if (textEditorRef.current) {
       textEditorRef.current.innerHTML = pageObj?.textContent || '';
+    }
+
+    if (pageObj?.drawingData && typeof pageObj.drawingData === 'string' && pageObj.drawingData.startsWith('data:image')) {
+      const img = new Image();
+      img.onload = () => {
+        if (canvasRef.current) {
+          const context = canvasRef.current.getContext('2d');
+          context.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+          context.drawImage(img, 0, 0);
+        }
+      };
+      img.onerror = (err) => {
+        console.warn('Canvas image load warning:', err);
+      };
+      img.src = pageObj.drawingData;
     }
   };
 
   // Parse initial content JSON
   useEffect(() => {
-    if (content && content.includes('<!-- TYPE:NOTES -->')) {
+    if (content && typeof content === 'string' && content.includes('<!-- TYPE:NOTES -->')) {
       try {
         const jsonStr = content.replace('<!-- TYPE:NOTES -->', '').trim();
         const parsed = JSON.parse(jsonStr);
@@ -137,6 +143,7 @@ export const NotesCanvas = ({ documentId }) => {
 
         if (
           remoteContent &&
+          typeof remoteContent === 'string' &&
           remoteContent.includes('<!-- TYPE:NOTES -->') &&
           remoteContent !== lastPolledContent.current
         ) {
