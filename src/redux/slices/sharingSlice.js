@@ -55,6 +55,9 @@ const sharingSlice = createSlice({
       state.pendingRequests = state.pendingRequests.filter(
         (r) => !(r.documentId === documentId && r.userId === userId)
       );
+      state.collaborators = state.collaborators.filter(
+        (c) => !(c.userId === userId || c.id === userId)
+      );
     },
     denyRequestStart: (state) => {
       state.loading = true;
@@ -73,7 +76,11 @@ const sharingSlice = createSlice({
     },
     shareDocumentSuccess: (state, action) => {
       state.loading = false;
-      state.collaborators.push(action.payload);
+      const newCollab = action.payload;
+      const targetId = newCollab.userId || newCollab.id;
+      state.collaborators = state.collaborators
+        .filter((c) => c.userId !== targetId && c.id !== targetId)
+        .concat(newCollab);
     },
     shareDocumentFailure: (state, action) => {
       state.loading = false;
