@@ -193,12 +193,9 @@ export const DashboardPage = () => {
                   <Dropdown
                     align="right"
                     trigger={
-                      <button
-                        onClick={(e) => e.stopPropagation()}
-                        className="p-1.5 rounded-lg text-docs-subtext hover:bg-gray-100 transition-colors"
-                      >
+                      <div className="p-1.5 rounded-lg text-docs-subtext hover:bg-gray-100 transition-colors cursor-pointer">
                         <MoreVertical className="w-4 h-4" />
-                      </button>
+                      </div>
                     }
                     items={[
                       { label: 'Open', icon: ExternalLink, onClick: () => navigate(ROUTES.EDITOR_BUILDER(doc.id)) },
@@ -247,12 +244,9 @@ export const DashboardPage = () => {
                   <Dropdown
                     align="right"
                     trigger={
-                      <button
-                        onClick={(e) => e.stopPropagation()}
-                        className="p-1.5 rounded-lg text-docs-subtext hover:bg-gray-100 transition-colors"
-                      >
+                      <div className="p-1.5 rounded-lg text-docs-subtext hover:bg-gray-100 transition-colors cursor-pointer">
                         <MoreVertical className="w-4 h-4" />
-                      </button>
+                      </div>
                     }
                     items={[
                       { label: 'Open', icon: ExternalLink, onClick: () => navigate(ROUTES.EDITOR_BUILDER(doc.id)) },

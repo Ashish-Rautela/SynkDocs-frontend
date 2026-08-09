@@ -19,12 +19,25 @@ export const Dropdown = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleTriggerClick = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setIsOpen((prev) => !prev);
+  };
+
   return (
-    <div className="relative inline-block text-left" ref={dropdownRef}>
-      <div onClick={() => setIsOpen(!isOpen)}>{trigger}</div>
+    <div
+      className="relative inline-block text-left"
+      ref={dropdownRef}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div onClick={handleTriggerClick} className="cursor-pointer">
+        {trigger}
+      </div>
 
       {isOpen && (
         <div
+          onClick={(e) => e.stopPropagation()}
           className={`absolute z-50 mt-1 min-w-[180px] bg-white rounded-xl shadow-docs-card border border-docs-border py-1 animate-in fade-in zoom-in-95 duration-150 ${
             align === 'right' ? 'right-0' : 'left-0'
           } ${className}`}
@@ -38,9 +51,10 @@ export const Dropdown = ({
               <button
                 key={item.label || index}
                 type="button"
-                onClick={() => {
-                  if (item.onClick) item.onClick();
+                onClick={(e) => {
+                  e.stopPropagation();
                   setIsOpen(false);
+                  if (item.onClick) item.onClick();
                 }}
                 className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm transition-colors text-left ${
                   item.danger
