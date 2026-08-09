@@ -53,6 +53,16 @@ export const sharingApi = {
     const response = await apiClient.get(API_ENDPOINTS.SHARING.PENDING_REQUESTS);
     return ensureArray(response.data);
   },
+
+  revokeAccess: async ({ documentId, userId }) => {
+    const response = await apiClient.delete(API_ENDPOINTS.SHARING.SHARE, {
+      data: {
+        documentId,
+        targetUserId: userId,
+      },
+    });
+    return response.data?.data || response.data;
+  },
 };
 
 
