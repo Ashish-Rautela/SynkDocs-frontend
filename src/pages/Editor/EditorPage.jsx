@@ -11,12 +11,13 @@ import { StatusBar } from '../../components/editor/StatusBar';
 import { CommentsSidebar } from '../../components/editor/CommentsSidebar';
 import { ShareModal } from '../../components/editor/ShareModal';
 import { VersionHistoryModal } from '../../components/editor/VersionHistoryModal';
+import { AccessDeniedModal } from '../../components/editor/AccessDeniedModal';
 import { Loader } from '../../components/common/Loader';
 import { ToastContainer } from '../../components/common/ToastContainer';
 
 export const EditorPage = () => {
   const { id } = useParams();
-  const { fetchDocumentById, currentDocument, loading } = useDocument();
+  const { fetchDocumentById, currentDocument, loading, error } = useDocument();
   const { loadDocument } = useEditor();
   const { user, token } = useAuth();
 
@@ -53,12 +54,14 @@ export const EditorPage = () => {
     };
   }, [id, user]);
 
-  if (loading && !currentDocument) {
+  const isAccessDenied = !!error && !currentDocument;
+
+  if (loading && !currentDocument && !error) {
     return <Loader fullPage text="Loading document workspace..." />;
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-docs-bg">
+    <div className="h-screen flex flex-col overflow-hidden bg-docs-bg relative">
       {/* 1. Top Navbar */}
       <EditorNavbar />
 
@@ -73,6 +76,12 @@ export const EditorPage = () => {
 
       {/* 4. Bottom Status Bar */}
       <StatusBar />
+
+      {/* Access Denied Modal Pop-up */}
+      <AccessDeniedModal
+        isOpen={isAccessDenied}
+        errorMessage={error}
+      />
 
       {/* Modals & Toast Containers */}
       <ShareModal />

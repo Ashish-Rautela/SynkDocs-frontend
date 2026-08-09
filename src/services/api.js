@@ -42,9 +42,16 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+    const originalRequest = error.config || {};
+    const requestUrl = originalRequest.url || '';
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Do NOT attempt token refresh for login, register, or refresh-token requests
+    const isAuthEndpoint =
+      requestUrl.includes('/login') ||
+      requestUrl.includes('/register') ||
+      requestUrl.includes('/refresh-token');
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -93,4 +100,3 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
