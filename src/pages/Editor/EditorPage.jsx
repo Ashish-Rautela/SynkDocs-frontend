@@ -7,6 +7,8 @@ import { socketService } from '../../socket/socket';
 import { EditorNavbar } from '../../components/editor/EditorNavbar';
 import { EditorToolbar } from '../../components/editor/EditorToolbar';
 import { DocumentCanvas } from '../../components/editor/DocumentCanvas';
+import { SpreadsheetCanvas } from '../../components/editor/SpreadsheetCanvas';
+import { NotesCanvas } from '../../components/editor/NotesCanvas';
 import { StatusBar } from '../../components/editor/StatusBar';
 import { CommentsSidebar } from '../../components/editor/CommentsSidebar';
 import { ShareModal } from '../../components/editor/ShareModal';
@@ -18,7 +20,7 @@ import { ToastContainer } from '../../components/common/ToastContainer';
 export const EditorPage = () => {
   const { id } = useParams();
   const { fetchDocumentById, currentDocument, loading, error } = useDocument();
-  const { loadDocument } = useEditor();
+  const { loadDocument, content } = useEditor();
   const { user, token } = useAuth();
 
   useEffect(() => {
@@ -56,6 +58,9 @@ export const EditorPage = () => {
 
   const isAccessDenied = !!error && !currentDocument;
 
+  const isDataSheet = (content && content.includes('<!-- TYPE:DATASHEET -->')) || (currentDocument?.content && currentDocument.content.includes('<!-- TYPE:DATASHEET -->'));
+  const isNotesCanvas = (content && content.includes('<!-- TYPE:NOTES -->')) || (currentDocument?.content && currentDocument.content.includes('<!-- TYPE:NOTES -->'));
+
   if (loading && !currentDocument && !error) {
     return <Loader fullPage text="Loading document workspace..." />;
   }
@@ -65,12 +70,18 @@ export const EditorPage = () => {
       {/* 1. Top Navbar */}
       <EditorNavbar />
 
-      {/* 2. Formatting Toolbar */}
-      <EditorToolbar />
+      {/* 2. Formatting Toolbar (only for standard rich text documents) */}
+      {!isDataSheet && !isNotesCanvas && <EditorToolbar />}
 
-      {/* 3. Main Workspace Area (Canvas & Right Sidebar Placeholder) */}
+      {/* 3. Main Workspace Area (Document Canvas / Data Sheet / Notes Canvas) */}
       <div className="flex-1 flex overflow-hidden relative">
-        <DocumentCanvas documentId={id} />
+        {isDataSheet ? (
+          <SpreadsheetCanvas documentId={id} />
+        ) : isNotesCanvas ? (
+          <NotesCanvas documentId={id} />
+        ) : (
+          <DocumentCanvas documentId={id} />
+        )}
         <CommentsSidebar />
       </div>
 

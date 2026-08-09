@@ -66,7 +66,7 @@ export const DocumentCanvas = ({ documentId }) => {
       } catch (e) {
         // Silently skip background polling errors
       }
-    }, 3500);
+    }, 1500);
 
     return () => clearInterval(syncInterval);
   }, [documentId, receiveRemoteContent]);

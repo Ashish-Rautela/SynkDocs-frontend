@@ -20,6 +20,8 @@ import {
   List,
   Sparkles,
   BookOpen,
+  Table,
+  PenTool,
 } from 'lucide-react';
 
 export const DashboardPage = () => {
@@ -42,10 +44,24 @@ export const DashboardPage = () => {
   }, []);
 
   const templates = [
-    { title: 'Blank Document', icon: Plus, color: 'bg-white border-dashed border-2 border-docs-blue text-docs-blue', content: '' },
-    { title: 'Project Proposal', icon: Sparkles, color: 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white', content: '<h1>Project Proposal Template</h1><p>Outline project objectives, timeline, and scope.</p>' },
-    { title: 'Meeting Notes', icon: BookOpen, color: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white', content: '<h2>Meeting Notes</h2><p><strong>Attendees:</strong> Sarah, Alex, Elena</p><p><strong>Action Items:</strong></p>' },
-    { title: 'Technical Spec', icon: FileText, color: 'bg-gradient-to-br from-purple-500 to-pink-600 text-white', content: '<h1>System Architecture Specification</h1><p>Database schema and API contracts specification.</p>' },
+    {
+      title: 'Blank Document',
+      icon: Plus,
+      color: 'bg-white border-dashed border-2 border-docs-blue text-docs-blue',
+      content: '',
+    },
+    {
+      title: 'Data Sheet',
+      icon: Table,
+      color: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white',
+      content: '<!-- TYPE:DATASHEET -->{"gridData":{},"cols":["A","B","C","D","E","F","G","H"],"rowCount":15}',
+    },
+    {
+      title: 'Notes',
+      icon: PenTool,
+      color: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white',
+      content: '<!-- TYPE:NOTES -->{"textContent":"","drawingData":""}',
+    },
   ];
 
   const handleCreateFromTemplate = (template) => {

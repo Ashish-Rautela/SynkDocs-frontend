@@ -12,6 +12,7 @@ class SocketService {
     this.broadcastChannel = null;
     this.activeUsersMap = new Map();
     this.statusListeners = new Set();
+    this.storageListener = null;
   }
 
   connect(token, user) {
@@ -75,7 +76,7 @@ class SocketService {
       this.socket.emit('join-document', { documentId, user: this.currentUser });
     }
 
-    // Setup BroadcastChannel for real-time document room sync across tabs & windows
+    // Setup BroadcastChannel for instant real-time document room sync across tabs & windows
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       if (this.broadcastChannel) {
         this.broadcastChannel.close();
@@ -113,6 +114,24 @@ class SocketService {
         this.emitLocal('presence-update', Array.from(this.activeUsersMap.values()));
       }
     }
+
+    // LocalStorage storage listener for instant cross-tab storage sync
+    if (typeof window !== 'undefined') {
+      if (this.storageListener) {
+        window.removeEventListener('storage', this.storageListener);
+      }
+      this.storageListener = (e) => {
+        if (e.key === `synkdocs_sync_${documentId}` && e.newValue) {
+          try {
+            const parsed = JSON.parse(e.newValue);
+            if (parsed.senderId !== this.currentUser?.id) {
+              this.emitLocal('document-change', parsed);
+            }
+          } catch (err) {}
+        }
+      };
+      window.addEventListener('storage', this.storageListener);
+    }
   }
 
   leaveDocument(documentId) {
@@ -124,6 +143,11 @@ class SocketService {
       this.broadcastMessage('USER_LEFT', { userId: this.currentUser.id });
       this.broadcastChannel.close();
       this.broadcastChannel = null;
+    }
+
+    if (typeof window !== 'undefined' && this.storageListener) {
+      window.removeEventListener('storage', this.storageListener);
+      this.storageListener = null;
     }
 
     this.activeUsersMap.clear();
@@ -139,6 +163,15 @@ class SocketService {
 
     if (this.broadcastChannel) {
       this.broadcastMessage('DOCUMENT_CHANGE', payload);
+    }
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(
+          `synkdocs_sync_${documentId}`,
+          JSON.stringify({ documentId, content, senderId: this.currentUser?.id, ts: Date.now() })
+        );
+      } catch (e) {}
     }
   }
 

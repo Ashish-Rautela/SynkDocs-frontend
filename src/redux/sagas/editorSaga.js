@@ -15,7 +15,7 @@ function* handleAutoSave() {
     return;
   }
 
-  yield delay(2500); // 2.5s debounce delay after user stops typing
+  yield delay(800); // Fast 800ms debounce delay after user stops typing
 
   const state = yield select();
   if (state.editor.saveStatus !== SAVE_STATUS.UNSAVED_CHANGES) {
