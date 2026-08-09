@@ -15,6 +15,8 @@ export const API_ENDPOINTS = {
   SHARING: {
     SHARE: '/sharing/documents/share',
     COLLABORATORS: (documentId) => `/sharing/documents/${documentId}/collaborators`,
+    REQUEST_ACCESS: '/sharing/documents/request-access',
+    PENDING_REQUESTS: '/sharing/documents/pending-requests',
   },
   SEARCH: {
     DOCUMENTS: (query) => `/search/documents/search?q=${encodeURIComponent(query)}`,

@@ -6,6 +6,7 @@ import { Loader } from '../../components/common/Loader';
 import { Dropdown } from '../../components/common/Dropdown';
 import { formatRelativeTime } from '../../utils/formatters';
 import { ROUTES } from '../../constants/routes';
+import { PendingRequestsList } from '../../components/dashboard/PendingRequestsList';
 import {
   Plus,
   FileText,
@@ -91,6 +92,9 @@ export const DashboardPage = () => {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 py-4">
+      {/* Pending Access Requests Notifications */}
+      <PendingRequestsList />
+
       {/* Top Banner: Quick Template Launcher */}
       <section className="space-y-4">
         <h2 className="text-xs font-bold text-docs-subtext uppercase tracking-wider">

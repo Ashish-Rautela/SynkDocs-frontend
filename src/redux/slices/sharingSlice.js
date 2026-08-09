@@ -4,7 +4,10 @@ const initialState = {
   collaborators: [],
   generalAccess: 'RESTRICTED', // 'RESTRICTED' | 'ANYONE_WITH_LINK'
   linkPermission: 'VIEWER',
+  pendingRequests: [],
   loading: false,
+  requestingAccess: false,
+  requestsLoading: false,
   error: null,
 };
 
@@ -21,6 +24,46 @@ const sharingSlice = createSlice({
       state.collaborators = action.payload;
     },
     fetchCollaboratorsFailure: (state, action) => {
+      state.loading = false;
+      state.error = action.payload;
+    },
+    requestAccessStart: (state) => {
+      state.requestingAccess = true;
+      state.error = null;
+    },
+    requestAccessSuccess: (state) => {
+      state.requestingAccess = false;
+    },
+    requestAccessFailure: (state, action) => {
+      state.requestingAccess = false;
+      state.error = action.payload;
+    },
+    fetchPendingRequestsStart: (state) => {
+      state.requestsLoading = true;
+      state.error = null;
+    },
+    fetchPendingRequestsSuccess: (state, action) => {
+      state.requestsLoading = false;
+      state.pendingRequests = action.payload;
+    },
+    fetchPendingRequestsFailure: (state, action) => {
+      state.requestsLoading = false;
+      state.error = action.payload;
+    },
+    removePendingRequest: (state, action) => {
+      const { documentId, userId } = action.payload;
+      state.pendingRequests = state.pendingRequests.filter(
+        (r) => !(r.documentId === documentId && r.userId === userId)
+      );
+    },
+    denyRequestStart: (state) => {
+      state.loading = true;
+      state.error = null;
+    },
+    denyRequestSuccess: (state) => {
+      state.loading = false;
+    },
+    denyRequestFailure: (state, action) => {
       state.loading = false;
       state.error = action.payload;
     },
@@ -61,6 +104,16 @@ export const {
   fetchCollaboratorsStart,
   fetchCollaboratorsSuccess,
   fetchCollaboratorsFailure,
+  requestAccessStart,
+  requestAccessSuccess,
+  requestAccessFailure,
+  fetchPendingRequestsStart,
+  fetchPendingRequestsSuccess,
+  fetchPendingRequestsFailure,
+  removePendingRequest,
+  denyRequestStart,
+  denyRequestSuccess,
+  denyRequestFailure,
   shareDocumentStart,
   shareDocumentSuccess,
   shareDocumentFailure,

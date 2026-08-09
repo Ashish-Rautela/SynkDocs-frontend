@@ -40,6 +40,19 @@ export const sharingApi = {
       userId: collab.userId || collab.id,
     }));
   },
+
+  requestAccess: async ({ documentId, role = 'VIEWER' }) => {
+    const response = await apiClient.post(API_ENDPOINTS.SHARING.REQUEST_ACCESS, {
+      documentId,
+      role,
+    });
+    return response.data?.data || response.data;
+  },
+
+  getPendingRequests: async () => {
+    const response = await apiClient.get(API_ENDPOINTS.SHARING.PENDING_REQUESTS);
+    return ensureArray(response.data);
+  },
 };
 
 

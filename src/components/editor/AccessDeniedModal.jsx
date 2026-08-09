@@ -1,27 +1,25 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { useAuth } from '../../hooks/useAuth';
 import { useDispatch } from 'react-redux';
-import { addToast } from '../../redux/slices/notificationSlice';
+import { requestAccessStart } from '../../redux/slices/sharingSlice';
 import { ROUTES } from '../../constants/routes';
 import { Lock, ArrowLeft, Send, Check } from 'lucide-react';
 
 export const AccessDeniedModal = ({ isOpen, onClose, errorMessage }) => {
   const navigate = useNavigate();
+  const { id } = useParams();
   const dispatch = useDispatch();
   const { user } = useAuth();
   const [requested, setRequested] = useState(false);
 
   const handleRequestAccess = () => {
-    setRequested(true);
-    dispatch(
-      addToast({
-        type: 'success',
-        message: 'Access request notification sent to document owner!',
-      })
-    );
+    if (id) {
+      dispatch(requestAccessStart({ documentId: id, role: 'EDITOR' }));
+      setRequested(true);
+    }
   };
 
   const handleGoBack = () => {
