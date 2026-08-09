@@ -26,9 +26,9 @@ export const RegisterPage = () => {
   const getPasswordStrength = (pass) => {
     if (!pass) return { score: 0, label: '', color: 'bg-gray-200' };
     let score = 0;
-    if (pass.length >= 6) score += 1;
+    if (pass.length >= 8) score += 1;
     if (/[A-Z]/.test(pass) || /[0-9]/.test(pass)) score += 1;
-    if (/[^A-Za-z0-9]/.test(pass) && pass.length >= 8) score += 1;
+    if (/[^A-Za-z0-9]/.test(pass)) score += 1;
 
     if (score === 1) return { score: 1, label: 'Weak', color: 'bg-red-500' };
     if (score === 2) return { score: 2, label: 'Medium', color: 'bg-amber-500' };
@@ -78,7 +78,7 @@ export const RegisterPage = () => {
             label="Password"
             type={showPassword ? 'text' : 'password'}
             icon={Lock}
-            placeholder="At least 6 characters"
+            placeholder="At least 8 characters"
             error={errors.password?.message}
             {...register('password', validationRules.password)}
           />
