@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useEditor } from '../../hooks/useEditor';
 import { socketService } from '../../socket/socket';
+import { documentApi } from '../../services/documentApi';
 import {
   PenTool,
   Eraser,
@@ -42,6 +43,9 @@ export const NotesCanvas = ({ documentId }) => {
   // Multi-page state
   const [pages, setPages] = useState([{ id: 1, textContent: '', drawingData: '' }]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
+
+  const lastLocalEditTimestamp = useRef(0);
+  const lastPolledContent = useRef('');
 
   // Setup canvas size & scale
   useEffect(() => {
@@ -116,6 +120,7 @@ export const NotesCanvas = ({ documentId }) => {
             setPages(parsed.pages);
             const activePage = parsed.pages[currentPageIndex] || parsed.pages[0];
             loadPageToCanvas(activePage);
+            lastPolledContent.current = data.content;
           }
         } catch (e) {
           console.warn('Remote Notes Canvas parse error:', e);
@@ -127,8 +132,45 @@ export const NotesCanvas = ({ documentId }) => {
     return () => socketService.off('document-change', handleRemoteChange);
   }, [currentPageIndex]);
 
+  // Cross-device background polling sync (every 2s) so edits on other devices display without refresh
+  useEffect(() => {
+    if (!documentId) return;
+
+    const pollForRemoteChanges = async () => {
+      const timeSinceLastEdit = Date.now() - lastLocalEditTimestamp.current;
+      if (timeSinceLastEdit < 3000) return;
+
+      try {
+        const latestDoc = await documentApi.getDocumentById(documentId);
+        const remoteContent = latestDoc?.content;
+
+        if (
+          remoteContent &&
+          remoteContent.includes('<!-- TYPE:NOTES -->') &&
+          remoteContent !== lastPolledContent.current
+        ) {
+          lastPolledContent.current = remoteContent;
+          const jsonStr = remoteContent.replace('<!-- TYPE:NOTES -->', '').trim();
+          const parsed = JSON.parse(jsonStr);
+          if (Array.isArray(parsed.pages) && parsed.pages.length > 0) {
+            setPages(parsed.pages);
+            const activePage = parsed.pages[currentPageIndex] || parsed.pages[0];
+            loadPageToCanvas(activePage);
+          }
+        }
+      } catch (e) {
+        // Quietly skip background polling errors
+      }
+    };
+
+    const syncInterval = setInterval(pollForRemoteChanges, 2000);
+    pollForRemoteChanges();
+    return () => clearInterval(syncInterval);
+  }, [documentId, currentPageIndex]);
+
   // Save current pages state to document & cloud
   const saveNotesData = (updatedPages = pages, idx = currentPageIndex) => {
+    lastLocalEditTimestamp.current = Date.now();
     const canvas = canvasRef.current;
     if (!canvas) return;
     const currentDrawingData = canvas.toDataURL();
@@ -152,6 +194,7 @@ export const NotesCanvas = ({ documentId }) => {
       currentPageIndex: idx,
     };
     const serialized = `<!-- TYPE:NOTES -->${JSON.stringify(payloadObj)}`;
+    lastPolledContent.current = serialized;
     updateContent(serialized);
     if (documentId) {
       socketService.emitDocumentChange(documentId, serialized);
@@ -160,7 +203,6 @@ export const NotesCanvas = ({ documentId }) => {
 
   // Multi-page navigation & management
   const handleAddPage = () => {
-    // First snapshot current page
     const canvas = canvasRef.current;
     const currentDrawingData = canvas ? canvas.toDataURL() : '';
     const currentText = textEditorRef.current ? textEditorRef.current.innerHTML : '';
@@ -180,18 +222,12 @@ export const NotesCanvas = ({ documentId }) => {
     setCurrentPageIndex(newIdx);
     loadPageToCanvas(newPageObj);
 
-    const payloadObj = { pages: nextPages, currentPageIndex: newIdx };
-    const serialized = `<!-- TYPE:NOTES -->${JSON.stringify(payloadObj)}`;
-    updateContent(serialized);
-    if (documentId) {
-      socketService.emitDocumentChange(documentId, serialized);
-    }
+    saveNotesData(nextPages, newIdx);
   };
 
   const handleSwitchPage = (targetIdx) => {
     if (targetIdx < 0 || targetIdx >= pages.length || targetIdx === currentPageIndex) return;
 
-    // Snapshot current page before switching
     const canvas = canvasRef.current;
     const currentDrawingData = canvas ? canvas.toDataURL() : '';
     const currentText = textEditorRef.current ? textEditorRef.current.innerHTML : '';
@@ -221,12 +257,7 @@ export const NotesCanvas = ({ documentId }) => {
     setCurrentPageIndex(newIdx);
     loadPageToCanvas(nextPages[newIdx]);
 
-    const payloadObj = { pages: nextPages, currentPageIndex: newIdx };
-    const serialized = `<!-- TYPE:NOTES -->${JSON.stringify(payloadObj)}`;
-    updateContent(serialized);
-    if (documentId) {
-      socketService.emitDocumentChange(documentId, serialized);
-    }
+    saveNotesData(nextPages, newIdx);
   };
 
   // Drawing Handlers

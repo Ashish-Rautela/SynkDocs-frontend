@@ -112,18 +112,6 @@ export const EditorNavbar = () => {
                 )}
               </div>
             </div>
-
-            {/* Menu Bar Bar (File, Edit, View, Insert, Format, Tools) */}
-            <div className="flex items-center gap-1 text-xs text-docs-darkText mt-0.5">
-              {['File', 'Edit', 'View', 'Insert', 'Format', 'Tools', 'Extensions', 'Help'].map((item) => (
-                <button
-                  key={item}
-                  className="px-2 py-0.5 rounded hover:bg-gray-100 text-docs-subtext hover:text-docs-darkText transition-colors font-medium"
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
 

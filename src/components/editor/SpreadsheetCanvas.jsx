@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useEditor } from '../../hooks/useEditor';
 import { socketService } from '../../socket/socket';
+import { documentApi } from '../../services/documentApi';
 import { Plus, Download, Bold, AlignLeft, AlignCenter, AlignRight, Table } from 'lucide-react';
 
 const DEFAULT_COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
@@ -14,6 +15,9 @@ export const SpreadsheetCanvas = ({ documentId }) => {
   const [activeCell, setActiveCell] = useState('A1');
   const [formulaValue, setFormulaValue] = useState('');
   const [cellStyles, setCellStyles] = useState({});
+
+  const lastLocalEditTimestamp = useRef(0);
+  const lastPolledContent = useRef('');
 
   // Parse initial content or JSON
   useEffect(() => {
@@ -42,6 +46,7 @@ export const SpreadsheetCanvas = ({ documentId }) => {
           if (parsed.cols) setCols(parsed.cols);
           if (parsed.rowCount) setRowCount(parsed.rowCount);
           if (parsed.cellStyles) setCellStyles(parsed.cellStyles);
+          lastPolledContent.current = data.content;
         } catch (e) {
           console.warn('Remote Data Sheet parse error:', e);
         }
@@ -52,8 +57,44 @@ export const SpreadsheetCanvas = ({ documentId }) => {
     return () => socketService.off('document-change', handleRemoteChange);
   }, []);
 
+  // Cross-device background polling sync (every 2s) so edits on other devices display without refresh
+  useEffect(() => {
+    if (!documentId) return;
+
+    const pollForRemoteChanges = async () => {
+      const timeSinceLastEdit = Date.now() - lastLocalEditTimestamp.current;
+      if (timeSinceLastEdit < 3000) return;
+
+      try {
+        const latestDoc = await documentApi.getDocumentById(documentId);
+        const remoteContent = latestDoc?.content;
+
+        if (
+          remoteContent &&
+          remoteContent.includes('<!-- TYPE:DATASHEET -->') &&
+          remoteContent !== lastPolledContent.current
+        ) {
+          lastPolledContent.current = remoteContent;
+          const jsonStr = remoteContent.replace('<!-- TYPE:DATASHEET -->', '').trim();
+          const parsed = JSON.parse(jsonStr);
+          if (parsed.gridData) setGridData(parsed.gridData);
+          if (parsed.cols) setCols(parsed.cols);
+          if (parsed.rowCount) setRowCount(parsed.rowCount);
+          if (parsed.cellStyles) setCellStyles(parsed.cellStyles);
+        }
+      } catch (e) {
+        // Quietly skip background polling errors
+      }
+    };
+
+    const syncInterval = setInterval(pollForRemoteChanges, 2000);
+    pollForRemoteChanges();
+    return () => clearInterval(syncInterval);
+  }, [documentId]);
+
   // Save grid data to document state
   const saveSheetData = (newGridData, newCols = cols, newRows = rowCount, newStyles = cellStyles) => {
+    lastLocalEditTimestamp.current = Date.now();
     const payloadObj = {
       gridData: newGridData,
       cols: newCols,
@@ -61,6 +102,7 @@ export const SpreadsheetCanvas = ({ documentId }) => {
       cellStyles: newStyles,
     };
     const serialized = `<!-- TYPE:DATASHEET -->${JSON.stringify(payloadObj)}`;
+    lastPolledContent.current = serialized;
     updateContent(serialized);
     if (documentId) {
       socketService.emitDocumentChange(documentId, serialized);
