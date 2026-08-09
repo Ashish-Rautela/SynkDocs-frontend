@@ -96,7 +96,7 @@ export const ShareModal = () => {
               collaborators.map((c) => (
                 <div key={c.userId || c.id || c.email} className="flex items-center justify-between p-2 rounded-xl hover:bg-gray-50 transition-colors">
                   <div className="flex items-center gap-3">
-                    <Avatar src={c.avatarUrl} name={c.userId || c.name || c.email || 'User'} size="md" />
+                    <Avatar src={c.avatarUrl} name={c.name || c.email || c.userId || 'User'} size="md" />
                     <div>
                       <p className="text-sm font-medium text-docs-darkText">{c.name || c.userId || c.email}</p>
                       <p className="text-xs text-docs-subtext">ID: {c.userId || c.id}</p>

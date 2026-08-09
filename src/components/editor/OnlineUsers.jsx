@@ -10,7 +10,7 @@ export const OnlineUsers = () => {
       {activeUsers.map((user) => (
         <div key={user.id} className="relative group" title={user.name}>
           <Avatar
-            src={user.avatar}
+            src={user.avatarUrl || user.avatar}
             name={user.name}
             size="sm"
             status="online"
