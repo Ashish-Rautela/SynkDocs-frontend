@@ -20,10 +20,10 @@ export const AuthLayout = () => {
 
         <div className="relative z-10 max-w-md space-y-6">
           <h1 className="text-4xl font-extrabold leading-tight">
-            Enterprise Real-Time Document Collaboration
+            Create, Share, and Collaborate in Real Time
           </h1>
           <p className="text-blue-100 text-base leading-relaxed">
-            Experience lightning-fast document editing, granular workspace RBAC, auto-save state machine, and enterprise socket synchronization.
+            SynkDocs brings your team together with lightning-fast document editing, seamless sharing, and secure access control.
           </p>
 
           <div className="space-y-4 pt-4">
@@ -31,25 +31,25 @@ export const AuthLayout = () => {
               <div className="p-2 rounded-lg bg-white/10">
                 <Zap className="w-5 h-5 text-yellow-300" />
               </div>
-              <span className="text-sm font-medium">Real-time multiplayer socket editing</span>
+              <span className="text-sm font-medium">Real-time collaborative editing</span>
             </div>
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-white/10">
                 <ShieldCheck className="w-5 h-5 text-emerald-300" />
               </div>
-              <span className="text-sm font-medium">Enterprise JWT authentication with automatic refresh</span>
+              <span className="text-sm font-medium">Secure and reliable access</span>
             </div>
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-white/10">
                 <Users className="w-5 h-5 text-blue-200" />
               </div>
-              <span className="text-sm font-medium">Role-based document sharing & permissions</span>
+              <span className="text-sm font-medium">Easy document sharing and permissions</span>
             </div>
           </div>
         </div>
 
         <div className="relative z-10 text-xs text-blue-200">
-          © {new Date().getFullYear()} SynkDocs Inc. Built for Scalable Enterprise Architectures.
+          © {new Date().getFullYear()} SynkDocs Inc. All rights reserved.
         </div>
       </div>
 
