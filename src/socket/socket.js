@@ -45,6 +45,14 @@ class SocketService {
         this.socket.on('presence-update', (users) => {
           this.emitLocal('presence-update', users);
         });
+
+        this.socket.on('comment-added', (data) => {
+          this.emitLocal('comment-added', data?.comment || data);
+        });
+
+        this.socket.on('comment-resolved', (data) => {
+          this.emitLocal('comment-resolved', data?.commentId || data);
+        });
       } catch (e) {
         console.warn('[SocketService] WebSocket init fallback:', e);
       }
@@ -88,6 +96,10 @@ class SocketService {
 
         if (type === 'DOCUMENT_CHANGE') {
           this.emitLocal('document-change', payload);
+        } else if (type === 'COMMENT_ADDED') {
+          this.emitLocal('comment-added', payload?.comment);
+        } else if (type === 'COMMENT_RESOLVED') {
+          this.emitLocal('comment-resolved', payload?.commentId);
         } else if (type === 'USER_JOINED') {
           if (payload?.user) {
             this.activeUsersMap.set(payload.user.id, payload.user);
@@ -127,6 +139,18 @@ class SocketService {
             if (parsed.senderId !== this.currentUser?.id) {
               this.emitLocal('document-change', parsed);
             }
+          } catch (err) {}
+        }
+        if (e.key === `synkdocs_comment_add_${documentId}` && e.newValue) {
+          try {
+            const parsed = JSON.parse(e.newValue);
+            this.emitLocal('comment-added', parsed.comment);
+          } catch (err) {}
+        }
+        if (e.key === `synkdocs_comment_resolve_${documentId}` && e.newValue) {
+          try {
+            const parsed = JSON.parse(e.newValue);
+            this.emitLocal('comment-resolved', parsed.commentId);
           } catch (err) {}
         }
       };
@@ -171,6 +195,36 @@ class SocketService {
           `synkdocs_sync_${documentId}`,
           JSON.stringify({ documentId, content, senderId: this.currentUser?.id, ts: Date.now() })
         );
+      } catch (e) {}
+    }
+  }
+
+  emitCommentAdded(documentId, comment) {
+    const payload = { documentId, comment, senderId: this.currentUser?.id };
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('comment-added', payload);
+    }
+    if (this.broadcastChannel) {
+      this.broadcastMessage('COMMENT_ADDED', payload);
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`synkdocs_comment_add_${documentId}`, JSON.stringify({ comment, ts: Date.now() }));
+      } catch (e) {}
+    }
+  }
+
+  emitCommentResolved(documentId, commentId) {
+    const payload = { documentId, commentId, senderId: this.currentUser?.id };
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('comment-resolved', payload);
+    }
+    if (this.broadcastChannel) {
+      this.broadcastMessage('COMMENT_RESOLVED', payload);
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`synkdocs_comment_resolve_${documentId}`, JSON.stringify({ commentId, ts: Date.now() }));
       } catch (e) {}
     }
   }

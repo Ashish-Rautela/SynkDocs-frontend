@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { useEditor } from '../../hooks/useEditor';
 import { useAuth } from '../../hooks/useAuth';
+import { socketService } from '../../socket/socket';
 import { Avatar } from '../common/Avatar';
-import { X, Send, CheckCircle2, MessageSquare, Trash2 } from 'lucide-react';
+import { X, Send, CheckCircle2, MessageSquare } from 'lucide-react';
+import { useDispatch } from 'react-redux';
+import { addComment, toggleResolveComment } from '../../redux/slices/editorSlice';
 
 export const CommentsSidebar = () => {
+  const { id: documentId } = useParams();
+  const dispatch = useDispatch();
   const { user } = useAuth();
   const {
     isCommentsSidebarOpen,
@@ -15,21 +21,59 @@ export const CommentsSidebar = () => {
   } = useEditor();
   const [commentInput, setCommentInput] = useState('');
 
+  // Live WebSocket & room sync for incoming remote comments
+  useEffect(() => {
+    const handleRemoteAdd = (cmt) => {
+      if (cmt && cmt.text) {
+        dispatch(addComment(cmt));
+      }
+    };
+    const handleRemoteResolve = (cmtId) => {
+      if (cmtId) {
+        dispatch(toggleResolveComment(cmtId));
+      }
+    };
+
+    socketService.on('comment-added', handleRemoteAdd);
+    socketService.on('comment-resolved', handleRemoteResolve);
+
+    return () => {
+      socketService.off('comment-added', handleRemoteAdd);
+      socketService.off('comment-resolved', handleRemoteResolve);
+    };
+  }, [dispatch]);
+
   if (!isCommentsSidebarOpen) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!commentInput.trim()) return;
-    postComment({
+
+    const newComment = {
+      id: `cmt-${Date.now()}`,
       text: commentInput.trim(),
       author: user?.name || user?.email || 'Collaborator',
       avatar: user?.avatarUrl || '',
-    });
+      timestamp: 'Just now',
+      resolved: false,
+    };
+
+    postComment(newComment);
+    if (documentId) {
+      socketService.emitCommentAdded(documentId, newComment);
+    }
     setCommentInput('');
   };
 
+  const handleToggleResolve = (cmtId) => {
+    resolveComment(cmtId);
+    if (documentId) {
+      socketService.emitCommentResolved(documentId, cmtId);
+    }
+  };
+
   return (
-    <aside className="w-80 border-l border-docs-border bg-white p-4 flex flex-col justify-between shrink-0 shadow-lg animate-in slide-in-from-right duration-200 z-40">
+    <aside className="w-full sm:w-80 border-l border-docs-border bg-white p-4 flex flex-col justify-between shrink-0 shadow-lg animate-in slide-in-from-right duration-200 z-40">
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b border-docs-border">
         <div className="flex items-center gap-2">
@@ -71,7 +115,7 @@ export const CommentsSidebar = () => {
                   </div>
                 </div>
                 <button
-                  onClick={() => resolveComment(cmt.id)}
+                  onClick={() => handleToggleResolve(cmt.id)}
                   className={`p-1 rounded-full transition-colors ${
                     cmt.resolved
                       ? 'text-emerald-600 bg-emerald-50'

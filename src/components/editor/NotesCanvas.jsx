@@ -8,7 +8,6 @@ import {
   Type,
   Trash2,
   Check,
-  Plus,
   ChevronLeft,
   ChevronRight,
   FilePlus,
@@ -21,13 +20,6 @@ const COLORS = [
   { name: 'Emerald', value: '#059669' },
   { name: 'Purple', value: '#9333ea' },
   { name: 'Amber', value: '#d97706' },
-];
-
-const THICKNESSES = [
-  { label: 'Fine', value: 2 },
-  { label: 'Medium', value: 4 },
-  { label: 'Thick', value: 8 },
-  { label: 'Marker', value: 14 },
 ];
 
 export const NotesCanvas = ({ documentId }) => {
@@ -95,7 +87,6 @@ export const NotesCanvas = ({ documentId }) => {
           setCurrentPageIndex(pageIdx);
           loadPageToCanvas(parsed.pages[pageIdx]);
         } else if (parsed.drawingData || parsed.textContent) {
-          // Backward compatibility for single page
           const singlePage = [
             { id: 1, textContent: parsed.textContent || '', drawingData: parsed.drawingData || '' },
           ];
@@ -158,9 +149,7 @@ export const NotesCanvas = ({ documentId }) => {
             loadPageToCanvas(activePage);
           }
         }
-      } catch (e) {
-        // Quietly skip background polling errors
-      }
+      } catch (e) {}
     };
 
     const syncInterval = setInterval(pollForRemoteChanges, 2000);
@@ -321,9 +310,9 @@ export const NotesCanvas = ({ documentId }) => {
   return (
     <div className="flex-1 flex flex-col bg-amber-50/30 overflow-hidden select-none">
       {/* 1. Paint & Multi-Page Notes Toolbar */}
-      <div className="flex items-center justify-between px-6 py-2.5 bg-white border-b border-docs-border gap-4 flex-wrap shadow-sm">
+      <div className="flex items-center justify-between px-4 sm:px-6 py-2.5 bg-white border-b border-docs-border gap-3 flex-wrap shadow-sm">
         {/* Tool Modes */}
-        <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-xl">
+        <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
           <button
             type="button"
             onClick={() => setMode('brush')}
@@ -334,7 +323,7 @@ export const NotesCanvas = ({ documentId }) => {
             }`}
           >
             <PenTool className="w-4 h-4" />
-            <span>Brush Pen</span>
+            <span className="hidden sm:inline">Brush Pen</span>
           </button>
 
           <button
@@ -347,7 +336,7 @@ export const NotesCanvas = ({ documentId }) => {
             }`}
           >
             <Eraser className="w-4 h-4" />
-            <span>Eraser</span>
+            <span className="hidden sm:inline">Eraser</span>
           </button>
 
           <button
@@ -360,14 +349,14 @@ export const NotesCanvas = ({ documentId }) => {
             }`}
           >
             <Type className="w-4 h-4" />
-            <span>Type Directly</span>
+            <span className="hidden sm:inline">Type Directly</span>
           </button>
         </div>
 
         {/* Colors Palette */}
         {mode === 'brush' && (
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-bold text-docs-subtext uppercase tracking-wider mr-1">
+            <span className="text-[11px] font-bold text-docs-subtext uppercase tracking-wider hidden sm:inline mr-1">
               Color:
             </span>
             {COLORS.map((c) => (
@@ -389,31 +378,28 @@ export const NotesCanvas = ({ documentId }) => {
           </div>
         )}
 
-        {/* Thickness Adjuster */}
+        {/* Brush Thickness Slider */}
         {mode !== 'type' && (
-          <div className="flex items-center gap-1 bg-gray-50 border border-docs-border p-1 rounded-xl">
-            <span className="text-[11px] font-bold text-docs-subtext uppercase tracking-wider px-2">
+          <div className="flex items-center gap-2 bg-gray-50 border border-docs-border px-3 py-1 rounded-xl">
+            <span className="text-[11px] font-bold text-docs-subtext uppercase tracking-wider hidden sm:inline">
               Size:
             </span>
-            {THICKNESSES.map((t) => (
-              <button
-                key={t.value}
-                type="button"
-                onClick={() => setThickness(t.value)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                  thickness === t.value
-                    ? 'bg-white text-docs-blue shadow-sm font-bold border border-docs-border'
-                    : 'text-docs-subtext hover:bg-white'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+            <input
+              type="range"
+              min="1"
+              max="35"
+              value={thickness}
+              onChange={(e) => setThickness(Number(e.target.value))}
+              className="w-20 sm:w-28 accent-docs-blue cursor-pointer"
+            />
+            <span className="text-xs font-bold text-docs-darkText min-w-[28px]">
+              {thickness}px
+            </span>
           </div>
         )}
 
         {/* Multi-Page Navigation Controls */}
-        <div className="flex items-center gap-2 bg-amber-50/80 border border-amber-200 p-1 rounded-xl">
+        <div className="flex items-center gap-1.5 bg-amber-50/80 border border-amber-200 p-1 rounded-xl">
           <button
             type="button"
             onClick={() => handleSwitchPage(currentPageIndex - 1)}
@@ -444,7 +430,7 @@ export const NotesCanvas = ({ documentId }) => {
             className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition-all ml-1"
           >
             <FilePlus className="w-3.5 h-3.5" />
-            <span>Add Page</span>
+            <span className="hidden sm:inline">Add Page</span>
           </button>
         </div>
 
@@ -455,13 +441,13 @@ export const NotesCanvas = ({ documentId }) => {
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold transition-all"
         >
           <Trash2 className="w-3.5 h-3.5" />
-          <span>{pages.length > 1 ? 'Delete Page' : 'Clear Notes'}</span>
+          <span className="hidden sm:inline">{pages.length > 1 ? 'Delete Page' : 'Clear Notes'}</span>
         </button>
       </div>
 
       {/* 2. Note Paper Pad Workspace Area */}
-      <div className="flex-1 overflow-y-auto p-6 sm:p-10 flex justify-center">
-        <div className="w-[800px] min-h-[1000px] bg-amber-50/70 border border-amber-200/80 rounded-xl shadow-docs-canvas relative overflow-hidden flex flex-col note-paper-pad">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-10 flex justify-center">
+        <div className="w-full max-w-[800px] min-h-[1000px] bg-amber-50/70 border border-amber-200/80 rounded-xl shadow-docs-canvas relative overflow-hidden flex flex-col note-paper-pad">
           {/* Page indicator watermark tag */}
           <div className="absolute top-3 right-4 text-[11px] font-bold text-amber-700/60 bg-amber-100/60 px-2 py-0.5 rounded-md select-none pointer-events-none z-30">
             Page {currentPageIndex + 1} of {pages.length}
@@ -477,16 +463,18 @@ export const NotesCanvas = ({ documentId }) => {
             }}
           />
           {/* Left Red Margin Line */}
-          <div className="absolute top-0 bottom-0 left-12 w-0.5 bg-red-300/60 pointer-events-none" />
+          <div className="absolute top-0 bottom-0 left-8 sm:left-12 w-0.5 bg-red-300/60 pointer-events-none" />
 
           {/* Direct Text Editor Layer */}
           <div
             ref={textEditorRef}
             contentEditable={mode === 'type'}
             suppressContentEditableWarning
+            dir="ltr"
+            style={{ direction: 'ltr', textAlign: 'left', unicodeBidi: 'plaintext' }}
             onInput={handleTextInput}
             placeholder={mode === 'type' ? 'Click anywhere on notes paper to type directly...' : ''}
-            className={`w-full h-full p-16 pl-20 outline-none font-sans text-base leading-[28px] text-docs-darkText relative z-10 min-h-[950px] ${
+            className={`w-full h-full p-8 sm:p-16 pl-12 sm:pl-20 outline-none font-sans text-base leading-[28px] text-docs-darkText relative z-10 min-h-[950px] ${
               mode === 'type' ? 'cursor-text' : 'pointer-events-none'
             }`}
           />
@@ -498,6 +486,13 @@ export const NotesCanvas = ({ documentId }) => {
             onMouseMove={draw}
             onMouseUp={stopDrawing}
             onMouseLeave={stopDrawing}
+            onTouchStart={(e) => {
+              if (e.touches[0]) startDrawing(e.touches[0]);
+            }}
+            onTouchMove={(e) => {
+              if (e.touches[0]) draw(e.touches[0]);
+            }}
+            onTouchEnd={stopDrawing}
             className={`absolute inset-0 z-20 ${
               mode === 'type' ? 'pointer-events-none' : 'cursor-crosshair'
             }`}

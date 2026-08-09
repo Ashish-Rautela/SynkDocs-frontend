@@ -27,7 +27,6 @@ export const Header = ({ showSearch = true }) => {
 
   const userMenuItems = [
     { label: 'Profile Settings', icon: User, onClick: () => navigate(ROUTES.PROFILE) },
-    { label: 'Preferences', icon: Settings, onClick: () => navigate(ROUTES.SETTINGS) },
     { divider: true },
     { label: 'Sign Out', icon: LogOut, danger: true, onClick: logout },
   ];

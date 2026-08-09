@@ -12,16 +12,13 @@ import {
   Star,
   MoreVertical,
   Trash2,
-  Share2,
   ExternalLink,
   Clock,
   Users,
   Grid,
   List,
-  Sparkles,
-  BookOpen,
-  Table,
-  PenTool,
+  FileSpreadsheet,
+  NotebookPen,
 } from 'lucide-react';
 
 export const DashboardPage = () => {
@@ -52,15 +49,15 @@ export const DashboardPage = () => {
     },
     {
       title: 'Data Sheet',
-      icon: Table,
-      color: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white',
+      icon: FileSpreadsheet,
+      color: 'bg-emerald-600 text-white shadow-sm hover:bg-emerald-700',
       content: '<!-- TYPE:DATASHEET -->{"gridData":{},"cols":["A","B","C","D","E","F","G","H"],"rowCount":15}',
     },
     {
       title: 'Notes',
-      icon: PenTool,
-      color: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white',
-      content: '<!-- TYPE:NOTES -->{"textContent":"","drawingData":""}',
+      icon: NotebookPen,
+      color: 'bg-amber-600 text-white shadow-sm hover:bg-amber-700',
+      content: '<!-- TYPE:NOTES -->{"pages":[{"id":1,"textContent":"","drawingData":""}],"currentPageIndex":0}',
     },
   ];
 
@@ -77,15 +74,29 @@ export const DashboardPage = () => {
     });
   };
 
+  const getDocumentPreviewText = (content) => {
+    if (!content) return 'Empty document content preview...';
+    if (content.includes('<!-- TYPE:DATASHEET -->')) {
+      return '📊 Interactive Data Sheet Grid (Tables & Formulas)';
+    }
+    if (content.includes('<!-- TYPE:NOTES -->')) {
+      return '📝 Handwritten & Typed Note Pad';
+    }
+    if (content.trim().startsWith('{') || content.trim().startsWith('[')) {
+      return 'Document workspace content';
+    }
+    const stripped = content.replace(/<[^>]*>?/gm, '').replace(/\{[^}]*\}/g, '').trim();
+    return stripped || 'Empty document content preview...';
+  };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 py-4">
       {/* Top Banner: Quick Template Launcher */}
       <section className="space-y-4">
-        <h2 className="text-sm font-bold text-docs-subtext uppercase tracking-wider">
+        <h2 className="text-xs font-bold text-docs-subtext uppercase tracking-wider">
           Start a new document
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {templates.map((tpl) => {
             const Icon = tpl.icon;
             return (
@@ -94,7 +105,7 @@ export const DashboardPage = () => {
                 onClick={() => handleCreateFromTemplate(tpl)}
                 className="flex flex-col items-center justify-center p-6 rounded-2xl border border-docs-border bg-white hover:shadow-docs-card hover:-translate-y-1 transition-all group text-left cursor-pointer"
               >
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 shadow-sm ${tpl.color}`}>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 ${tpl.color}`}>
                   <Icon className="w-6 h-6" />
                 </div>
                 <span className="text-sm font-semibold text-docs-darkText group-hover:text-docs-blue transition-colors">
@@ -110,7 +121,7 @@ export const DashboardPage = () => {
       <section className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-docs-border pb-3">
           {/* Category Tabs */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {[
               { id: 'all', label: 'Recent Documents', icon: Clock },
               { id: 'starred', label: 'Starred', icon: Star },
@@ -178,8 +189,8 @@ export const DashboardPage = () => {
               >
                 {/* Paper Preview Header */}
                 <div className="h-36 bg-docs-bg p-4 border-b border-docs-border rounded-t-2xl flex flex-col justify-between relative overflow-hidden">
-                  <div className="text-[10px] text-docs-subtext line-clamp-4 leading-relaxed select-none">
-                    {doc.content.replace(/<[^>]*>?/gm, '') || 'Empty document content preview...'}
+                  <div className="text-[11px] text-docs-subtext line-clamp-4 leading-relaxed select-none font-medium">
+                    {getDocumentPreviewText(doc.content)}
                   </div>
                   <div className="flex items-center justify-between z-10">
                     <Avatar src={doc.owner?.avatarUrl} name={doc.owner?.name} size="sm" />

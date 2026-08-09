@@ -1,4 +1,4 @@
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector, useDispatch } from 'react';
 import {
   fetchDocumentsStart,
   fetchDocumentByIdStart,
@@ -27,29 +27,19 @@ export const useDocument = () => {
 
   // Filtered documents based on search query and category tab
   const getFilteredDocuments = () => {
-    if (documentState.searchQuery && Array.isArray(documentState.searchResults)) {
-      return documentState.searchResults;
-    }
-
     let list = Array.isArray(documentState.documents) ? documentState.documents : [];
-    if (documentState.filterCategory === 'recent') {
-      list = Array.isArray(documentState.recentDocuments) ? documentState.recentDocuments : [];
-    }
+
     if (documentState.filterCategory === 'starred') {
-      list = Array.isArray(documentState.starredDocuments) ? documentState.starredDocuments : [];
-    }
-    if (documentState.filterCategory === 'shared') {
-      list = Array.isArray(documentState.sharedDocuments) ? documentState.sharedDocuments : [];
+      list = list.filter((doc) => doc.isStarred);
     }
 
-    if (documentState.searchQuery) {
-      const q = documentState.searchQuery.toLowerCase();
-      list = list.filter((doc) => doc?.title?.toLowerCase().includes(q));
+    if (documentState.searchQuery && documentState.searchQuery.trim() !== '') {
+      const q = documentState.searchQuery.toLowerCase().trim();
+      return list.filter((doc) => doc?.title?.toLowerCase().includes(q));
     }
+
     return list;
   };
-
-
 
   return {
     ...documentState,

@@ -15,7 +15,6 @@ const DashboardPage = lazy(() => import('../pages/Dashboard/DashboardPage').then
 const EditorPage = lazy(() => import('../pages/Editor/EditorPage').then((m) => ({ default: m.EditorPage })));
 const SharedDocumentsPage = lazy(() => import('../pages/Shared/SharedDocumentsPage').then((m) => ({ default: m.SharedDocumentsPage })));
 const ProfilePage = lazy(() => import('../pages/Profile/ProfilePage').then((m) => ({ default: m.ProfilePage })));
-const SettingsPage = lazy(() => import('../pages/Settings/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const NotFoundPage = lazy(() => import('../pages/NotFound/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 
 export const AppRoutes = () => {
@@ -40,7 +39,6 @@ export const AppRoutes = () => {
             <Route path={ROUTES.DASHBOARD} element={<DashboardPage />} />
             <Route path={ROUTES.SHARED} element={<SharedDocumentsPage />} />
             <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
-            <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
           </Route>
         </Route>
 
