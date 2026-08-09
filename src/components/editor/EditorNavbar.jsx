@@ -129,7 +129,7 @@ export const EditorNavbar = () => {
 
         {/* Right: Comments, Version History, Live Users, Share, Profile */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Comments Button Placeholder */}
+          {/* Comments Button */}
           <button
             onClick={toggleCommentsPanel}
             className={`p-2 rounded-full text-docs-subtext hover:bg-gray-100 transition-colors relative ${
@@ -138,15 +138,6 @@ export const EditorNavbar = () => {
             title="Comments thread"
           >
             <MessageSquare className="w-5 h-5" />
-          </button>
-
-          {/* Version History Button */}
-          <button
-            onClick={() => openVersionHistory(true)}
-            className="p-2 rounded-full text-docs-subtext hover:bg-gray-100 transition-colors"
-            title="Version history"
-          >
-            <History className="w-5 h-5" />
           </button>
 
           {/* Active Online Collaborators Indicator */}

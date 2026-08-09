@@ -12,7 +12,6 @@ import { NotesCanvas } from '../../components/editor/NotesCanvas';
 import { StatusBar } from '../../components/editor/StatusBar';
 import { CommentsSidebar } from '../../components/editor/CommentsSidebar';
 import { ShareModal } from '../../components/editor/ShareModal';
-import { VersionHistoryModal } from '../../components/editor/VersionHistoryModal';
 import { AccessDeniedModal } from '../../components/editor/AccessDeniedModal';
 import { Loader } from '../../components/common/Loader';
 import { ToastContainer } from '../../components/common/ToastContainer';
@@ -96,7 +95,6 @@ export const EditorPage = () => {
 
       {/* Modals & Toast Containers */}
       <ShareModal />
-      <VersionHistoryModal />
       <ToastContainer />
     </div>
   );

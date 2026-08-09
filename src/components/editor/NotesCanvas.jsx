@@ -1,7 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useEditor } from '../../hooks/useEditor';
 import { socketService } from '../../socket/socket';
-import { PenTool, Eraser, Type, Trash2, Sliders, Palette, Check } from 'lucide-react';
+import {
+  PenTool,
+  Eraser,
+  Type,
+  Trash2,
+  Check,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  FilePlus,
+} from 'lucide-react';
 
 const COLORS = [
   { name: 'Dark Ink', value: '#1e293b' },
@@ -28,7 +38,10 @@ export const NotesCanvas = ({ documentId }) => {
   const [selectedColor, setSelectedColor] = useState('#1e293b');
   const [thickness, setThickness] = useState(4);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [textContent, setTextContent] = useState('');
+
+  // Multi-page state
+  const [pages, setPages] = useState([{ id: 1, textContent: '', drawingData: '' }]);
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
 
   // Setup canvas size & scale
   useEffect(() => {
@@ -37,32 +50,54 @@ export const NotesCanvas = ({ documentId }) => {
     const ctx = canvas.getContext('2d');
     canvas.width = 800;
     canvas.height = 1000;
-
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
   }, []);
 
-  // Parse initial content
+  // Load active page onto canvas and text layer
+  const loadPageToCanvas = (pageObj) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (pageObj?.drawingData) {
+      const img = new Image();
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+      };
+      img.src = pageObj.drawingData;
+    }
+
+    if (textEditorRef.current) {
+      textEditorRef.current.innerHTML = pageObj?.textContent || '';
+    }
+  };
+
+  // Parse initial content JSON
   useEffect(() => {
     if (content && content.includes('<!-- TYPE:NOTES -->')) {
       try {
         const jsonStr = content.replace('<!-- TYPE:NOTES -->', '').trim();
         const parsed = JSON.parse(jsonStr);
-        if (parsed.textContent) {
-          setTextContent(parsed.textContent);
-          if (textEditorRef.current) textEditorRef.current.innerHTML = parsed.textContent;
-        }
-        if (parsed.drawingData) {
-          const canvas = canvasRef.current;
-          if (canvas) {
-            const ctx = canvas.getContext('2d');
-            const img = new Image();
-            img.onload = () => {
-              ctx.clearRect(0, 0, canvas.width, canvas.height);
-              ctx.drawImage(img, 0, 0);
-            };
-            img.src = parsed.drawingData;
-          }
+
+        if (Array.isArray(parsed.pages) && parsed.pages.length > 0) {
+          setPages(parsed.pages);
+          const pageIdx =
+            parsed.currentPageIndex !== undefined && parsed.currentPageIndex < parsed.pages.length
+              ? parsed.currentPageIndex
+              : 0;
+          setCurrentPageIndex(pageIdx);
+          loadPageToCanvas(parsed.pages[pageIdx]);
+        } else if (parsed.drawingData || parsed.textContent) {
+          // Backward compatibility for single page
+          const singlePage = [
+            { id: 1, textContent: parsed.textContent || '', drawingData: parsed.drawingData || '' },
+          ];
+          setPages(singlePage);
+          setCurrentPageIndex(0);
+          loadPageToCanvas(singlePage[0]);
         }
       } catch (e) {
         console.warn('Notes Canvas parse error:', e);
@@ -70,30 +105,17 @@ export const NotesCanvas = ({ documentId }) => {
     }
   }, [content]);
 
-  // Real-time socket listener for remote drawing & text changes
+  // Real-time socket listener for remote drawing & page changes
   useEffect(() => {
     const handleRemoteChange = (data) => {
       if (data && typeof data.content === 'string' && data.content.includes('<!-- TYPE:NOTES -->')) {
         try {
           const jsonStr = data.content.replace('<!-- TYPE:NOTES -->', '').trim();
           const parsed = JSON.parse(jsonStr);
-          if (parsed.textContent !== undefined) {
-            setTextContent(parsed.textContent);
-            if (textEditorRef.current && textEditorRef.current.innerHTML !== parsed.textContent) {
-              textEditorRef.current.innerHTML = parsed.textContent;
-            }
-          }
-          if (parsed.drawingData) {
-            const canvas = canvasRef.current;
-            if (canvas) {
-              const ctx = canvas.getContext('2d');
-              const img = new Image();
-              img.onload = () => {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(img, 0, 0);
-              };
-              img.src = parsed.drawingData;
-            }
+          if (Array.isArray(parsed.pages) && parsed.pages.length > 0) {
+            setPages(parsed.pages);
+            const activePage = parsed.pages[currentPageIndex] || parsed.pages[0];
+            loadPageToCanvas(activePage);
           }
         } catch (e) {
           console.warn('Remote Notes Canvas parse error:', e);
@@ -103,16 +125,103 @@ export const NotesCanvas = ({ documentId }) => {
 
     socketService.on('document-change', handleRemoteChange);
     return () => socketService.off('document-change', handleRemoteChange);
-  }, []);
+  }, [currentPageIndex]);
 
-  const saveNotesData = (newText = textContent) => {
+  // Save current pages state to document & cloud
+  const saveNotesData = (updatedPages = pages, idx = currentPageIndex) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const drawingData = canvas.toDataURL();
+    const currentDrawingData = canvas.toDataURL();
+    const currentText = textEditorRef.current ? textEditorRef.current.innerHTML : '';
+
+    const newPages = updatedPages.map((pg, i) => {
+      if (i === idx) {
+        return {
+          ...pg,
+          textContent: currentText,
+          drawingData: currentDrawingData,
+        };
+      }
+      return pg;
+    });
+
+    setPages(newPages);
+
     const payloadObj = {
-      textContent: newText,
-      drawingData,
+      pages: newPages,
+      currentPageIndex: idx,
     };
+    const serialized = `<!-- TYPE:NOTES -->${JSON.stringify(payloadObj)}`;
+    updateContent(serialized);
+    if (documentId) {
+      socketService.emitDocumentChange(documentId, serialized);
+    }
+  };
+
+  // Multi-page navigation & management
+  const handleAddPage = () => {
+    // First snapshot current page
+    const canvas = canvasRef.current;
+    const currentDrawingData = canvas ? canvas.toDataURL() : '';
+    const currentText = textEditorRef.current ? textEditorRef.current.innerHTML : '';
+
+    const updatedPages = pages.map((pg, i) => {
+      if (i === currentPageIndex) {
+        return { ...pg, textContent: currentText, drawingData: currentDrawingData };
+      }
+      return pg;
+    });
+
+    const newPageObj = { id: Date.now(), textContent: '', drawingData: '' };
+    const nextPages = [...updatedPages, newPageObj];
+    const newIdx = nextPages.length - 1;
+
+    setPages(nextPages);
+    setCurrentPageIndex(newIdx);
+    loadPageToCanvas(newPageObj);
+
+    const payloadObj = { pages: nextPages, currentPageIndex: newIdx };
+    const serialized = `<!-- TYPE:NOTES -->${JSON.stringify(payloadObj)}`;
+    updateContent(serialized);
+    if (documentId) {
+      socketService.emitDocumentChange(documentId, serialized);
+    }
+  };
+
+  const handleSwitchPage = (targetIdx) => {
+    if (targetIdx < 0 || targetIdx >= pages.length || targetIdx === currentPageIndex) return;
+
+    // Snapshot current page before switching
+    const canvas = canvasRef.current;
+    const currentDrawingData = canvas ? canvas.toDataURL() : '';
+    const currentText = textEditorRef.current ? textEditorRef.current.innerHTML : '';
+
+    const updatedPages = pages.map((pg, i) => {
+      if (i === currentPageIndex) {
+        return { ...pg, textContent: currentText, drawingData: currentDrawingData };
+      }
+      return pg;
+    });
+
+    setPages(updatedPages);
+    setCurrentPageIndex(targetIdx);
+    loadPageToCanvas(updatedPages[targetIdx]);
+  };
+
+  const handleDeletePage = () => {
+    if (pages.length <= 1) {
+      handleClearCanvas();
+      return;
+    }
+
+    const nextPages = pages.filter((_, i) => i !== currentPageIndex);
+    const newIdx = Math.max(0, currentPageIndex - 1);
+
+    setPages(nextPages);
+    setCurrentPageIndex(newIdx);
+    loadPageToCanvas(nextPages[newIdx]);
+
+    const payloadObj = { pages: nextPages, currentPageIndex: newIdx };
     const serialized = `<!-- TYPE:NOTES -->${JSON.stringify(payloadObj)}`;
     updateContent(serialized);
     if (documentId) {
@@ -169,21 +278,18 @@ export const NotesCanvas = ({ documentId }) => {
     if (canvas) {
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (textEditorRef.current) textEditorRef.current.innerHTML = '';
       saveNotesData();
     }
   };
 
   const handleTextInput = () => {
-    if (textEditorRef.current) {
-      const html = textEditorRef.current.innerHTML;
-      setTextContent(html);
-      saveNotesData(html);
-    }
+    saveNotesData();
   };
 
   return (
     <div className="flex-1 flex flex-col bg-amber-50/30 overflow-hidden select-none">
-      {/* 1. Paint Notes Toolbar */}
+      {/* 1. Paint & Multi-Page Notes Toolbar */}
       <div className="flex items-center justify-between px-6 py-2.5 bg-white border-b border-docs-border gap-4 flex-wrap shadow-sm">
         {/* Tool Modes */}
         <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-xl">
@@ -240,7 +346,9 @@ export const NotesCanvas = ({ documentId }) => {
                 onClick={() => setSelectedColor(c.value)}
                 style={{ backgroundColor: c.value }}
                 className={`w-6 h-6 rounded-full transition-transform flex items-center justify-center ${
-                  selectedColor === c.value ? 'scale-110 ring-2 ring-docs-blue ring-offset-1' : 'hover:scale-105'
+                  selectedColor === c.value
+                    ? 'scale-110 ring-2 ring-docs-blue ring-offset-1'
+                    : 'hover:scale-105'
                 }`}
                 title={c.name}
               >
@@ -273,20 +381,61 @@ export const NotesCanvas = ({ documentId }) => {
           </div>
         )}
 
-        {/* Action: Clear */}
+        {/* Multi-Page Navigation Controls */}
+        <div className="flex items-center gap-2 bg-amber-50/80 border border-amber-200 p-1 rounded-xl">
+          <button
+            type="button"
+            onClick={() => handleSwitchPage(currentPageIndex - 1)}
+            disabled={currentPageIndex === 0}
+            className="p-1 rounded-lg text-amber-900 disabled:opacity-30 hover:bg-amber-100 transition-colors"
+            title="Previous page"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+
+          <span className="text-xs font-bold text-amber-900 px-1">
+            Page {currentPageIndex + 1} of {pages.length}
+          </span>
+
+          <button
+            type="button"
+            onClick={() => handleSwitchPage(currentPageIndex + 1)}
+            disabled={currentPageIndex === pages.length - 1}
+            className="p-1 rounded-lg text-amber-900 disabled:opacity-30 hover:bg-amber-100 transition-colors"
+            title="Next page"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleAddPage}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition-all ml-1"
+          >
+            <FilePlus className="w-3.5 h-3.5" />
+            <span>Add Page</span>
+          </button>
+        </div>
+
+        {/* Actions: Delete/Clear Page */}
         <button
           type="button"
-          onClick={handleClearCanvas}
+          onClick={handleDeletePage}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold transition-all"
         >
           <Trash2 className="w-3.5 h-3.5" />
-          <span>Clear Notes</span>
+          <span>{pages.length > 1 ? 'Delete Page' : 'Clear Notes'}</span>
         </button>
       </div>
 
       {/* 2. Note Paper Pad Workspace Area */}
       <div className="flex-1 overflow-y-auto p-6 sm:p-10 flex justify-center">
         <div className="w-[800px] min-h-[1000px] bg-amber-50/70 border border-amber-200/80 rounded-xl shadow-docs-canvas relative overflow-hidden flex flex-col note-paper-pad">
+          {/* Page indicator watermark tag */}
+          <div className="absolute top-3 right-4 text-[11px] font-bold text-amber-700/60 bg-amber-100/60 px-2 py-0.5 rounded-md select-none pointer-events-none z-30">
+            Page {currentPageIndex + 1} of {pages.length}
+          </div>
+
           {/* Lined Note Paper Lines Background Effect */}
           <div
             className="absolute inset-0 pointer-events-none opacity-30"

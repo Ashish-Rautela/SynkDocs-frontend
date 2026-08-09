@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useEditor } from '../../hooks/useEditor';
+import { useAuth } from '../../hooks/useAuth';
 import { Avatar } from '../common/Avatar';
-import { X, Send, CheckCircle2, MessageSquare } from 'lucide-react';
+import { X, Send, CheckCircle2, MessageSquare, Trash2 } from 'lucide-react';
 
 export const CommentsSidebar = () => {
+  const { user } = useAuth();
   const {
     isCommentsSidebarOpen,
     toggleCommentsPanel,
@@ -18,12 +20,16 @@ export const CommentsSidebar = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!commentInput.trim()) return;
-    postComment({ text: commentInput });
+    postComment({
+      text: commentInput.trim(),
+      author: user?.name || user?.email || 'Collaborator',
+      avatar: user?.avatarUrl || '',
+    });
     setCommentInput('');
   };
 
   return (
-    <aside className="w-80 border-l border-docs-border bg-white p-4 flex flex-col justify-between shrink-0 shadow-lg animate-in slide-in-from-right duration-200">
+    <aside className="w-80 border-l border-docs-border bg-white p-4 flex flex-col justify-between shrink-0 shadow-lg animate-in slide-in-from-right duration-200 z-40">
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b border-docs-border">
         <div className="flex items-center gap-2">
@@ -40,36 +46,46 @@ export const CommentsSidebar = () => {
 
       {/* Comment List */}
       <div className="flex-1 overflow-y-auto py-4 space-y-4">
-        {comments.map((cmt) => (
-          <div
-            key={cmt.id}
-            className={`p-3.5 rounded-xl border transition-all ${
-              cmt.resolved
-                ? 'bg-gray-50 border-gray-200 opacity-60'
-                : 'bg-blue-50/30 border-blue-100 shadow-sm'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Avatar src={cmt.avatar} name={cmt.author} size="sm" />
-                <div>
-                  <h4 className="text-xs font-bold text-docs-darkText">{cmt.author}</h4>
-                  <span className="text-[10px] text-docs-subtext">{cmt.timestamp}</span>
-                </div>
-              </div>
-              <button
-                onClick={() => resolveComment(cmt.id)}
-                className={`p-1 rounded-full text-docs-subtext hover:text-emerald-600 transition-colors ${
-                  cmt.resolved ? 'text-emerald-600' : ''
-                }`}
-                title={cmt.resolved ? 'Mark as unresolved' : 'Resolve thread'}
-              >
-                <CheckCircle2 className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-xs text-docs-darkText leading-relaxed pl-8">{cmt.text}</p>
+        {comments.length === 0 ? (
+          <div className="text-center py-10 text-docs-subtext space-y-2 select-none">
+            <MessageSquare className="w-8 h-8 mx-auto text-gray-300" />
+            <p className="text-xs font-medium">No comments yet</p>
+            <p className="text-[11px] text-gray-400">Start the conversation by adding a comment below.</p>
           </div>
-        ))}
+        ) : (
+          comments.map((cmt) => (
+            <div
+              key={cmt.id}
+              className={`p-3.5 rounded-xl border transition-all ${
+                cmt.resolved
+                  ? 'bg-gray-50 border-gray-200 opacity-60'
+                  : 'bg-blue-50/30 border-blue-100 shadow-sm'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Avatar src={cmt.avatar} name={cmt.author} size="sm" />
+                  <div>
+                    <h4 className="text-xs font-bold text-docs-darkText">{cmt.author}</h4>
+                    <span className="text-[10px] text-docs-subtext">{cmt.timestamp}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => resolveComment(cmt.id)}
+                  className={`p-1 rounded-full transition-colors ${
+                    cmt.resolved
+                      ? 'text-emerald-600 bg-emerald-50'
+                      : 'text-docs-subtext hover:text-emerald-600 hover:bg-gray-100'
+                  }`}
+                  title={cmt.resolved ? 'Mark thread as active' : 'Resolve thread'}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-xs text-docs-darkText leading-relaxed pl-8">{cmt.text}</p>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Input box */}
