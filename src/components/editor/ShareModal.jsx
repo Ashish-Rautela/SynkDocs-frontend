@@ -77,7 +77,7 @@ export const ShareModal = () => {
               type="text"
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
-              placeholder="Enter User ID (e.g. usr_123) or Email..."
+              placeholder="Enter email address..."
               className="w-full pl-10 pr-4 py-2.5 bg-white border border-docs-border rounded-xl text-sm text-docs-darkText focus:outline-none focus:ring-2 focus:ring-docs-blue"
             />
           </div>
@@ -109,8 +109,8 @@ export const ShareModal = () => {
                   <div className="flex items-center gap-3">
                     <Avatar src={c.avatarUrl} name={c.name || c.email || c.userId || 'User'} size="md" />
                     <div>
-                      <p className="text-sm font-medium text-docs-darkText">{c.name || c.userId || c.email}</p>
-                      <p className="text-xs text-docs-subtext">ID: {c.userId || c.id}</p>
+                      <p className="text-sm font-medium text-docs-darkText">{c.name || c.email || 'User'}</p>
+                      {c.email && c.name && <p className="text-xs text-docs-subtext">{c.email}</p>}
                     </div>
                   </div>
                   
