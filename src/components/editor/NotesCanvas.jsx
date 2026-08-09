@@ -79,7 +79,13 @@ export const NotesCanvas = ({ documentId }) => {
 
   // Parse initial content JSON
   useEffect(() => {
-    if (content && typeof content === 'string' && content.includes('<!-- TYPE:NOTES -->')) {
+    if (
+      content &&
+      typeof content === 'string' &&
+      content.includes('<!-- TYPE:NOTES -->') &&
+      content !== lastPolledContent.current
+    ) {
+      lastPolledContent.current = content;
       try {
         const jsonStr = content.replace('<!-- TYPE:NOTES -->', '').trim();
         const parsed = JSON.parse(jsonStr);
@@ -478,11 +484,11 @@ export const NotesCanvas = ({ documentId }) => {
             contentEditable={mode === 'type'}
             suppressContentEditableWarning
             dir="ltr"
-            style={{ direction: 'ltr', textAlign: 'left', unicodeBidi: 'plaintext' }}
+            style={{ direction: 'ltr', textAlign: 'left' }}
             onInput={handleTextInput}
             placeholder={mode === 'type' ? 'Click anywhere on notes paper to type directly...' : ''}
-            className={`w-full h-full p-8 sm:p-16 pl-12 sm:pl-20 outline-none font-sans text-base leading-[28px] text-docs-darkText relative z-10 min-h-[950px] ${
-              mode === 'type' ? 'cursor-text' : 'pointer-events-none'
+            className={`w-full h-full p-8 sm:p-16 pl-12 sm:pl-20 outline-none font-sans text-base leading-[28px] text-docs-darkText relative min-h-[950px] ${
+              mode === 'type' ? 'cursor-text z-30' : 'pointer-events-none z-10'
             }`}
           />
 
