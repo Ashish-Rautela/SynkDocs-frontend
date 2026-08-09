@@ -63,13 +63,18 @@ function* handleCreateDocument(action) {
 }
 
 
+import { markSaved, setSaveStatus } from '../slices/editorSlice';
+import { SAVE_STATUS } from '../../constants/editorConstants';
+
 function* handleSaveDocument(action) {
   try {
     const data = yield call(documentApi.saveDocument, action.payload);
     yield put(saveDocumentSuccess(data));
+    yield put(markSaved({ title: data.title || action.payload.title, content: data.content || action.payload.content }));
   } catch (error) {
     const msg = error.message || 'Failed to save document';
     yield put(saveDocumentFailure(msg));
+    yield put(setSaveStatus(SAVE_STATUS.UNSAVED_CHANGES));
     yield put(addToast({ type: 'error', message: msg }));
   }
 }

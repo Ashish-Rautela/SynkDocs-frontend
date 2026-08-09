@@ -4,6 +4,8 @@ import { SAVE_STATUS } from '../../constants/editorConstants';
 const initialState = {
   content: '',
   title: 'Untitled Document',
+  lastSavedContent: '',
+  lastSavedTitle: 'Untitled Document',
   formatState: {
     bold: false,
     italic: false,
@@ -30,17 +32,50 @@ const editorSlice = createSlice({
   name: 'editor',
   initialState,
   reducers: {
+    loadDocumentState: (state, action) => {
+      const { title, content } = action.payload || {};
+      const newTitle = title || 'Untitled Document';
+      const newContent = content || '';
+      state.title = newTitle;
+      state.content = newContent;
+      state.lastSavedTitle = newTitle;
+      state.lastSavedContent = newContent;
+      state.saveStatus = SAVE_STATUS.SAVED;
+      state.undoStack = [];
+      state.redoStack = [];
+    },
     setEditorContent: (state, action) => {
       if (state.content !== action.payload) {
         state.undoStack.push(state.content);
         state.content = action.payload;
         state.redoStack = [];
-        state.saveStatus = SAVE_STATUS.UNSAVED_CHANGES;
+        const isChanged =
+          state.content !== state.lastSavedContent || state.title !== state.lastSavedTitle;
+        state.saveStatus = isChanged ? SAVE_STATUS.UNSAVED_CHANGES : SAVE_STATUS.SAVED;
       }
     },
     setDocumentTitle: (state, action) => {
-      state.title = action.payload;
-      state.saveStatus = SAVE_STATUS.UNSAVED_CHANGES;
+      if (state.title !== action.payload) {
+        state.title = action.payload;
+        const isChanged =
+          state.content !== state.lastSavedContent || state.title !== state.lastSavedTitle;
+        state.saveStatus = isChanged ? SAVE_STATUS.UNSAVED_CHANGES : SAVE_STATUS.SAVED;
+      }
+    },
+    remoteContentReceived: (state, action) => {
+      const newContent = action.payload;
+      state.content = newContent;
+      state.lastSavedContent = newContent;
+      state.saveStatus = SAVE_STATUS.SAVED;
+    },
+    markSaved: (state, action) => {
+      const { title, content } = action.payload || {};
+      if (title !== undefined) state.lastSavedTitle = title;
+      if (content !== undefined) state.lastSavedContent = content;
+      state.saveStatus = SAVE_STATUS.SAVED;
+    },
+    manualSaveDocument: (state) => {
+      // Triggered by Ctrl+S or manual save button
     },
     toggleFormat: (state, action) => {
       const { formatKey, value } = action.payload;
@@ -69,7 +104,9 @@ const editorSlice = createSlice({
         const previousContent = state.undoStack.pop();
         state.redoStack.push(state.content);
         state.content = previousContent;
-        state.saveStatus = SAVE_STATUS.UNSAVED_CHANGES;
+        const isChanged =
+          state.content !== state.lastSavedContent || state.title !== state.lastSavedTitle;
+        state.saveStatus = isChanged ? SAVE_STATUS.UNSAVED_CHANGES : SAVE_STATUS.SAVED;
       }
     },
     redo: (state) => {
@@ -77,7 +114,9 @@ const editorSlice = createSlice({
         const nextContent = state.redoStack.pop();
         state.undoStack.push(state.content);
         state.content = nextContent;
-        state.saveStatus = SAVE_STATUS.UNSAVED_CHANGES;
+        const isChanged =
+          state.content !== state.lastSavedContent || state.title !== state.lastSavedTitle;
+        state.saveStatus = isChanged ? SAVE_STATUS.UNSAVED_CHANGES : SAVE_STATUS.SAVED;
       }
     },
     addComment: (state, action) => {
@@ -109,8 +148,12 @@ const editorSlice = createSlice({
 });
 
 export const {
+  loadDocumentState,
   setEditorContent,
   setDocumentTitle,
+  remoteContentReceived,
+  markSaved,
+  manualSaveDocument,
   toggleFormat,
   setSaveStatus,
   setActiveUsers,
