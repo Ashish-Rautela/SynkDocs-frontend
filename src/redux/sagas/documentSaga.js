@@ -24,13 +24,15 @@ import {
   setSearchResults,
 } from '../slices/documentSlice';
 import { addToast } from '../slices/notificationSlice';
+import { markSaved, setSaveStatus } from '../slices/editorSlice';
+import { SAVE_STATUS } from '../../constants/editorConstants';
 
 function* handleFetchDocuments() {
   try {
     const data = yield call(documentApi.getDocuments);
     yield put(fetchDocumentsSuccess(data));
   } catch (error) {
-    const msg = error.message || 'Failed to fetch documents';
+    const msg = error.response?.data?.message || error.message || 'Failed to fetch documents';
     yield put(fetchDocumentsFailure(msg));
     yield put(addToast({ type: 'error', message: msg }));
   }
@@ -41,9 +43,22 @@ function* handleFetchDocumentById(action) {
     const data = yield call(documentApi.getDocumentById, action.payload);
     yield put(fetchDocumentByIdSuccess(data));
   } catch (error) {
-    const msg = error.message || 'Failed to load document';
+    const isForbidden = error.response?.status === 403;
+    const isNotFound = error.response?.status === 404;
+    const msg =
+      error.response?.data?.message ||
+      (isForbidden
+        ? 'You do not have permission to view or edit this document'
+        : isNotFound
+        ? 'Document not found or access restricted'
+        : error.message || 'Failed to load document');
+
     yield put(fetchDocumentByIdFailure(msg));
-    yield put(addToast({ type: 'error', message: msg }));
+
+    // Show toast only for unexpected server errors, not for clean permission modal pop-up
+    if (!isForbidden && !isNotFound) {
+      yield put(addToast({ type: 'error', message: msg }));
+    }
   }
 }
 
@@ -56,23 +71,24 @@ function* handleCreateDocument(action) {
       action.payload.onSuccess(data);
     }
   } catch (error) {
-    const msg = error.message || 'Failed to create document';
+    const msg = error.response?.data?.message || error.message || 'Failed to create document';
     yield put(createDocumentFailure(msg));
     yield put(addToast({ type: 'error', message: msg }));
   }
 }
 
-
-import { markSaved, setSaveStatus } from '../slices/editorSlice';
-import { SAVE_STATUS } from '../../constants/editorConstants';
-
 function* handleSaveDocument(action) {
   try {
     const data = yield call(documentApi.saveDocument, action.payload);
     yield put(saveDocumentSuccess(data));
-    yield put(markSaved({ title: data.title || action.payload.title, content: data.content || action.payload.content }));
+    yield put(
+      markSaved({
+        title: data.title || action.payload.title,
+        content: data.content || action.payload.content,
+      })
+    );
   } catch (error) {
-    const msg = error.message || 'Failed to save document';
+    const msg = error.response?.data?.message || error.message || 'Failed to save document';
     yield put(saveDocumentFailure(msg));
     yield put(setSaveStatus(SAVE_STATUS.UNSAVED_CHANGES));
     yield put(addToast({ type: 'error', message: msg }));
@@ -131,4 +147,3 @@ export function* documentSaga() {
   yield takeLatest(fetchVersionHistoryStart.type, handleFetchVersionHistory);
   yield takeLatest(setSearchQuery.type, handleSearchDocuments);
 }
-

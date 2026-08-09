@@ -6,7 +6,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useDispatch } from 'react-redux';
 import { addToast } from '../../redux/slices/notificationSlice';
 import { ROUTES } from '../../constants/routes';
-import { Lock, ShieldAlert, ArrowLeft, Send, Check } from 'lucide-react';
+import { Lock, ArrowLeft, Send, Check } from 'lucide-react';
 
 export const AccessDeniedModal = ({ isOpen, onClose, errorMessage }) => {
   const navigate = useNavigate();
@@ -29,6 +29,14 @@ export const AccessDeniedModal = ({ isOpen, onClose, errorMessage }) => {
     navigate(ROUTES.DASHBOARD);
   };
 
+  const displayMessage =
+    !errorMessage ||
+    errorMessage.includes('status code') ||
+    errorMessage.includes('403') ||
+    errorMessage.includes('404')
+      ? 'You currently do not have permission to view or edit this file.'
+      : errorMessage;
+
   return (
     <Modal
       isOpen={isOpen}
@@ -45,9 +53,7 @@ export const AccessDeniedModal = ({ isOpen, onClose, errorMessage }) => {
           </div>
           <div>
             <h4 className="text-sm font-bold text-amber-900">You need permission to access this document</h4>
-            <p className="text-xs text-amber-700 mt-0.5">
-              {errorMessage || 'You currently do not have permission to access or view this file.'}
-            </p>
+            <p className="text-xs text-amber-700 mt-0.5">{displayMessage}</p>
           </div>
         </div>
 

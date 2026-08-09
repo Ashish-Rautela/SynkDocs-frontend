@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import { useEditor } from '../../hooks/useEditor';
 import { useAuth } from '../../hooks/useAuth';
 import { socketService } from '../../socket/socket';
+import { documentApi } from '../../services/documentApi';
 import { setActiveUsers } from '../../redux/slices/editorSlice';
 
 export const DocumentCanvas = ({ documentId }) => {
@@ -43,6 +44,32 @@ export const DocumentCanvas = ({ documentId }) => {
       socketService.off('presence-update', handlePresenceUpdate);
     };
   }, [dispatch, receiveRemoteContent]);
+
+  // Real-time cross-device background sync (every 3.5s) so edits on other devices appear without page refresh
+  useEffect(() => {
+    if (!documentId) return;
+
+    const syncInterval = setInterval(async () => {
+      // Don't overwrite if local user is actively focused and typing in the editor
+      if (typeof document !== 'undefined' && document.hasFocus && document.hasFocus() && editorRef.current === document.activeElement) {
+        return;
+      }
+
+      try {
+        const latestDoc = await documentApi.getDocumentById(documentId);
+        if (latestDoc && typeof latestDoc.content === 'string') {
+          if (editorRef.current && editorRef.current.innerHTML !== latestDoc.content) {
+            editorRef.current.innerHTML = latestDoc.content;
+            receiveRemoteContent(latestDoc.content);
+          }
+        }
+      } catch (e) {
+        // Silently skip background polling errors
+      }
+    }, 3500);
+
+    return () => clearInterval(syncInterval);
+  }, [documentId, receiveRemoteContent]);
 
   const handleInput = () => {
     if (editorRef.current) {
