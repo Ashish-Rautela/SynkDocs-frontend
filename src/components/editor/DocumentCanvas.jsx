@@ -1,16 +1,20 @@
-import React, { useRef, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import React, { useRef, useEffect, useCallback } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useEditor } from '../../hooks/useEditor';
 import { useAuth } from '../../hooks/useAuth';
 import { socketService } from '../../socket/socket';
 import { documentApi } from '../../services/documentApi';
 import { setActiveUsers } from '../../redux/slices/editorSlice';
+import { SAVE_STATUS } from '../../constants/editorConstants';
 
 export const DocumentCanvas = ({ documentId }) => {
   const dispatch = useDispatch();
   const { content, updateContent, receiveRemoteContent, triggerManualSave } = useEditor();
+  const saveStatus = useSelector((state) => state.editor.saveStatus);
   const { user } = useAuth();
   const editorRef = useRef(null);
+  const lastLocalEditTimestamp = useRef(0);
+  const lastPolledContent = useRef('');
 
   // Sync content with ref on initial load or local state change
   useEffect(() => {
@@ -27,6 +31,7 @@ export const DocumentCanvas = ({ documentId }) => {
           editorRef.current.innerHTML = data.content;
         }
         receiveRemoteContent(data.content);
+        lastPolledContent.current = data.content;
       }
     };
 
@@ -45,41 +50,64 @@ export const DocumentCanvas = ({ documentId }) => {
     };
   }, [dispatch, receiveRemoteContent]);
 
-  // Real-time cross-device background sync (every 3.5s) so edits on other devices appear without page refresh
+  // Cross-device background sync: poll the server every 2s.
+  // This is the ONLY mechanism that works across different devices/browsers.
+  // We ALWAYS poll, but only apply remote changes if the user hasn't typed locally
+  // in the last 3 seconds (to avoid overwriting mid-typing).
   useEffect(() => {
     if (!documentId) return;
 
-    const syncInterval = setInterval(async () => {
-      // Don't overwrite if local user is actively focused and typing in the editor
-      if (typeof document !== 'undefined' && document.hasFocus && document.hasFocus() && editorRef.current === document.activeElement) {
+    const pollForRemoteChanges = async () => {
+      const timeSinceLastEdit = Date.now() - lastLocalEditTimestamp.current;
+
+      // If the user typed locally less than 3s ago, skip this poll cycle
+      // so we don't overwrite their in-progress edits
+      if (timeSinceLastEdit < 3000) {
         return;
       }
 
       try {
         const latestDoc = await documentApi.getDocumentById(documentId);
-        if (latestDoc && typeof latestDoc.content === 'string') {
-          if (editorRef.current && editorRef.current.innerHTML !== latestDoc.content) {
-            editorRef.current.innerHTML = latestDoc.content;
-            receiveRemoteContent(latestDoc.content);
-          }
+        const remoteContent = latestDoc?.content;
+
+        if (typeof remoteContent !== 'string') return;
+
+        // Only update if the remote content is actually different from what we last polled
+        // AND different from current editor content
+        if (
+          remoteContent !== lastPolledContent.current &&
+          editorRef.current &&
+          editorRef.current.innerHTML !== remoteContent
+        ) {
+          lastPolledContent.current = remoteContent;
+          editorRef.current.innerHTML = remoteContent;
+          receiveRemoteContent(remoteContent);
         }
       } catch (e) {
         // Silently skip background polling errors
       }
-    }, 1500);
+    };
+
+    // Poll every 2 seconds — guarantees < 5s update time on the receiving device
+    const syncInterval = setInterval(pollForRemoteChanges, 2000);
+
+    // Also poll immediately on mount to get latest content
+    pollForRemoteChanges();
 
     return () => clearInterval(syncInterval);
   }, [documentId, receiveRemoteContent]);
 
-  const handleInput = () => {
+  const handleInput = useCallback(() => {
     if (editorRef.current) {
       const html = editorRef.current.innerHTML;
+      lastLocalEditTimestamp.current = Date.now();
+      lastPolledContent.current = html; // Mark current content as "known" so polling doesn't revert it
       updateContent(html);
       if (documentId) {
         socketService.emitDocumentChange(documentId, html);
       }
     }
-  };
+  }, [documentId, updateContent]);
 
   // Keyboard shortcut listener for Ctrl+S / Cmd+S manual save to cloud
   useEffect(() => {
