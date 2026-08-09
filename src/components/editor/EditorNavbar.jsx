@@ -135,10 +135,10 @@ export const EditorNavbar = () => {
           {/* Share Button */}
           <button
             onClick={() => openShareModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-docs-blue text-white rounded-full text-sm font-semibold hover:bg-docs-hoverBlue shadow-sm hover:shadow transition-all"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-docs-blue text-white rounded-full text-sm font-semibold hover:bg-docs-hoverBlue shadow-sm hover:shadow transition-all"
           >
             <Share2 className="w-4 h-4" />
-            <span>Share</span>
+            <span className="hidden sm:inline">Share</span>
           </button>
 
           {/* User Profile */}

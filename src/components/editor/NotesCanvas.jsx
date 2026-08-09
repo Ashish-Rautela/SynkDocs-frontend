@@ -11,6 +11,8 @@ import {
   ChevronLeft,
   ChevronRight,
   FilePlus,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 
 const COLORS = [
@@ -31,6 +33,7 @@ export const NotesCanvas = ({ documentId }) => {
   const [selectedColor, setSelectedColor] = useState('#1e293b');
   const [thickness, setThickness] = useState(4);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [isScrollLocked, setIsScrollLocked] = useState(true);
 
   // Multi-page state
   const [pages, setPages] = useState([{ id: 1, textContent: '', drawingData: '' }]);
@@ -366,6 +369,23 @@ export const NotesCanvas = ({ documentId }) => {
           </button>
         </div>
 
+        {/* Scroll Lock Toggle (for mobile) */}
+        {mode !== 'type' && (
+          <button
+            type="button"
+            onClick={() => setIsScrollLocked(!isScrollLocked)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+              isScrollLocked
+                ? 'bg-amber-100 border-amber-300 text-amber-900 shadow-sm'
+                : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+            }`}
+            title={isScrollLocked ? "Scroll locked - Drawing enabled" : "Scroll unlocked - Pan enabled"}
+          >
+            {isScrollLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+            <span className="hidden sm:inline">{isScrollLocked ? 'Scroll Locked' : 'Scroll Unlocked'}</span>
+          </button>
+        )}
+
         {/* Colors Palette */}
         {mode === 'brush' && (
           <div className="flex items-center gap-1.5">
@@ -506,6 +526,7 @@ export const NotesCanvas = ({ documentId }) => {
               if (e.touches[0]) draw(e.touches[0]);
             }}
             onTouchEnd={stopDrawing}
+            style={{ touchAction: isScrollLocked && mode !== 'type' ? 'none' : 'auto' }}
             className={`absolute inset-0 z-20 ${
               mode === 'type' ? 'pointer-events-none' : 'cursor-crosshair'
             }`}
