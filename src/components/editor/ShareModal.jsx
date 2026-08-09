@@ -5,20 +5,31 @@ import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { Avatar } from '../common/Avatar';
 import { Badge } from '../common/Badge';
-import { shareDocumentStart, fetchCollaboratorsStart } from '../../redux/slices/sharingSlice';
+import {
+  shareDocumentStart,
+  fetchCollaboratorsStart,
+  denyRequestStart,
+} from '../../redux/slices/sharingSlice';
 import { addToast } from '../../redux/slices/notificationSlice';
 import { useEditor } from '../../hooks/useEditor';
 import { useDocument } from '../../hooks/useDocument';
-import { Link2, Copy, Check, Lock, Globe, UserPlus } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
+import { Link2, Copy, Check, Lock, Globe, UserPlus, X, Trash2 } from 'lucide-react';
 
 export const ShareModal = () => {
   const dispatch = useDispatch();
   const { id: paramDocId } = useParams();
   const { currentDocument } = useDocument();
   const { isShareModalOpen, openShareModal } = useEditor();
+  const { user: currentUser } = useAuth();
   const { collaborators, generalAccess, loading } = useSelector((state) => state.sharing);
 
   const docId = currentDocument?.id || currentDocument?.documentId || paramDocId;
+
+  const isOwner = currentDocument?.ownerId === currentUser?.userId ||
+                  collaborators.some(
+                    (c) => c.role === 'OWNER' && (c.userId === currentUser?.userId || c.id === currentUser?.userId)
+                  );
 
   const [userInput, setUserInput] = useState('');
   const [roleInput, setRoleInput] = useState('EDITOR');
@@ -102,7 +113,69 @@ export const ShareModal = () => {
                       <p className="text-xs text-docs-subtext">ID: {c.userId || c.id}</p>
                     </div>
                   </div>
-                  <Badge variant={c.role === 'OWNER' ? 'blue' : 'gray'}>{c.role}</Badge>
+                  
+                  <div className="flex items-center gap-2">
+                    {c.role.startsWith('PENDING_') ? (
+                      isOwner ? (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              dispatch(
+                                shareDocumentStart({
+                                  documentId: docId,
+                                  targetUserId: c.userId || c.id,
+                                  role: c.role.replace('PENDING_', ''),
+                                })
+                              )
+                            }
+                            className="p-1 bg-docs-blue text-white rounded-lg hover:bg-docs-hoverBlue transition-all cursor-pointer"
+                            title="Approve request"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              dispatch(
+                                denyRequestStart({
+                                  documentId: docId,
+                                  userId: c.userId || c.id,
+                                })
+                              )
+                            }
+                            className="p-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-all cursor-pointer"
+                            title="Deny request"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <Badge variant="amber">{c.role}</Badge>
+                      )
+                    ) : (
+                      <>
+                        <Badge variant={c.role === 'OWNER' ? 'blue' : 'gray'}>{c.role}</Badge>
+                        {isOwner && c.role !== 'OWNER' && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              dispatch(
+                                denyRequestStart({
+                                  documentId: docId,
+                                  userId: c.userId || c.id,
+                                })
+                              )
+                            }
+                            className="p-1.5 text-docs-subtext hover:text-red-600 rounded-lg hover:bg-gray-100 transition-all cursor-pointer"
+                            title="Revoke access"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               ))
             )}
