@@ -8,6 +8,7 @@ import { Avatar } from '../common/Avatar';
 import { Dropdown } from '../common/Dropdown';
 import { ROUTES } from '../../constants/routes';
 import { SAVE_STATUS } from '../../constants/editorConstants';
+import { getDocumentType } from '../../utils/formatters';
 import {
   FileText,
   Star,
@@ -22,6 +23,8 @@ import {
   Settings,
   LogOut,
   ArrowLeft,
+  FileSpreadsheet,
+  NotebookPen,
 } from 'lucide-react';
 
 export const EditorNavbar = () => {
@@ -29,6 +32,7 @@ export const EditorNavbar = () => {
   const { user, logout } = useAuth();
   const { currentDocument, toggleStar } = useDocument();
   const {
+    content,
     title,
     updateTitle,
     saveStatus,
@@ -50,6 +54,16 @@ export const EditorNavbar = () => {
     { label: 'Sign Out', icon: LogOut, danger: true, onClick: logout },
   ];
 
+  const docContent = content || currentDocument?.content || '';
+  const docType = getDocumentType(docContent, title || currentDocument?.title);
+  const typeIcons = {
+    notes: { icon: NotebookPen, bg: 'bg-amber-600', title: 'Notes' },
+    sheet: { icon: FileSpreadsheet, bg: 'bg-emerald-600', title: 'Data Sheet' },
+    doc: { icon: FileText, bg: 'bg-docs-blue', title: 'Document' },
+  };
+  const activeType = typeIcons[docType] || typeIcons.doc;
+  const TypeIcon = activeType.icon;
+
   return (
     <header className="flex flex-col bg-white border-b border-docs-border select-none">
       {/* Top Main Row */}
@@ -64,8 +78,8 @@ export const EditorNavbar = () => {
             <ArrowLeft className="w-5 h-5" />
           </Link>
 
-          <div className="w-8 h-8 rounded-lg bg-docs-blue flex items-center justify-center text-white shrink-0 shadow-sm">
-            <FileText className="w-4 h-4" />
+          <div className={`w-8 h-8 rounded-lg ${activeType.bg} flex items-center justify-center text-white shrink-0 shadow-sm`} title={activeType.title}>
+            <TypeIcon className="w-4 h-4" />
           </div>
 
           <div className="flex flex-col">

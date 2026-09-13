@@ -39,3 +39,51 @@ export const countWordsAndChars = (text = '') => {
   const characters = cleanText.length;
   return { words, characters };
 };
+
+export const decodeHtmlEntities = (text = '') => {
+  if (!text) return '';
+  return text
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'");
+};
+
+export const getDocumentType = (content = '', title = '') => {
+  const str = typeof content === 'string' ? content : '';
+  const t = typeof title === 'string' ? title.toLowerCase() : '';
+  if (str.includes('<!-- TYPE:NOTES -->') || (!str && t.includes('note'))) {
+    return 'notes';
+  }
+  if (str.includes('<!-- TYPE:DATASHEET -->') || (!str && t.includes('sheet'))) {
+    return 'sheet';
+  }
+  return 'doc';
+};
+
+// ponytail: extract clean preview text for standard documents, suppress for notes and sheets
+export const getDocumentPreviewText = (content = '', type = 'doc') => {
+  if (!content) return '';
+  const docType = type || getDocumentType(content);
+  if (docType === 'notes' || docType === 'sheet') return '';
+
+  const str = typeof content === 'string' ? content : '';
+  if (str.includes('<!-- TYPE:NOTES -->') || str.includes('<!-- TYPE:DATASHEET -->')) {
+    return '';
+  }
+
+  const trimmed = str.trim();
+  if (trimmed.startsWith('{') || trimmed.startsWith('[') || trimmed.startsWith('<!--')) {
+    return '';
+  }
+
+  const clean = decodeHtmlEntities(trimmed.replace(/<[^>]*>?/gm, ' '))
+    .replace(/\{[^}]*\}/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return clean;
+};
+

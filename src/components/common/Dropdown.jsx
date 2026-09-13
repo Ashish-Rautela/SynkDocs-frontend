@@ -4,6 +4,7 @@ export const Dropdown = ({
   trigger,
   items = [],
   align = 'left', // 'left' | 'right'
+  direction = 'down', // 'down' | 'up'
   className = '',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -25,10 +26,15 @@ export const Dropdown = ({
     setIsOpen((prev) => !prev);
   };
 
+  const positionClass = direction === 'up'
+    ? 'bottom-full mb-1.5'
+    : 'top-full mt-1';
+
   return (
     <div
-      className="relative inline-block text-left"
+      className={`relative inline-block text-left ${isOpen ? 'z-50' : ''}`}
       ref={dropdownRef}
+      data-dropdown-open={isOpen ? 'true' : undefined}
       onClick={(e) => e.stopPropagation()}
     >
       <div onClick={handleTriggerClick} className="cursor-pointer">
@@ -38,7 +44,7 @@ export const Dropdown = ({
       {isOpen && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className={`absolute z-50 mt-1 min-w-[180px] bg-white rounded-xl shadow-docs-card border border-docs-border py-1 animate-in fade-in zoom-in-95 duration-150 ${
+          className={`absolute z-50 min-w-[180px] bg-white rounded-xl shadow-docs-card border border-docs-border py-1 animate-in fade-in zoom-in-95 duration-150 ${positionClass} ${
             align === 'right' ? 'right-0' : 'left-0'
           } ${className}`}
         >

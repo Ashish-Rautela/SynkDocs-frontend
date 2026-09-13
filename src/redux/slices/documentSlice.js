@@ -32,7 +32,7 @@ const documentSlice = createSlice({
         (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
       );
       state.starredDocuments = docs.filter((doc) => doc.isStarred);
-      state.sharedDocuments = docs.filter((doc) => doc.isShared);
+      state.sharedDocuments = docs.filter((doc) => doc.isShared === true || (doc.role && doc.role !== 'OWNER'));
     },
 
     fetchDocumentsFailure: (state, action) => {
@@ -105,6 +105,10 @@ const documentSlice = createSlice({
       state.starredDocuments = state.starredDocuments.filter((doc) => doc.id !== action.payload.id);
       state.sharedDocuments = state.sharedDocuments.filter((doc) => doc.id !== action.payload.id);
     },
+    deleteDocumentFailure: (state, action) => {
+      state.loading = false;
+      state.error = action.payload;
+    },
     fetchVersionHistoryStart: (state) => {
       state.loading = true;
     },
@@ -141,6 +145,7 @@ export const {
   toggleStarSuccess,
   deleteDocumentStart,
   deleteDocumentSuccess,
+  deleteDocumentFailure,
   fetchVersionHistoryStart,
   fetchVersionHistorySuccess,
   setSearchQuery,

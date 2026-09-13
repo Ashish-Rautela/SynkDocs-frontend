@@ -21,13 +21,23 @@ export const documentApi = {
   getDocuments: async () => {
     const response = await apiClient.get(API_ENDPOINTS.DOCUMENTS.BASE);
     const list = ensureArray(response.data);
-    return list.map((doc) => ({
-      ...doc,
-      id: doc.documentId || doc.id,
-      documentId: doc.documentId || doc.id,
-      content: doc.content || '',
-      updatedAt: doc.updatedAt || doc.createdAt || new Date().toISOString(),
-    }));
+
+    // ponytail: filter out any document IDs deleted in current session to guard against GSI replication lag on immediate page reload
+    let deletedIds = new Set();
+    try {
+      const stored = JSON.parse(sessionStorage.getItem('synkdocs_deleted_ids') || '[]');
+      deletedIds = new Set(stored);
+    } catch {}
+
+    return list
+      .filter((doc) => !deletedIds.has(doc.documentId || doc.id))
+      .map((doc) => ({
+        ...doc,
+        id: doc.documentId || doc.id,
+        documentId: doc.documentId || doc.id,
+        content: doc.content || '',
+        updatedAt: doc.updatedAt || doc.createdAt || new Date().toISOString(),
+      }));
   },
 
   getDocumentById: async (documentId) => {
@@ -86,11 +96,12 @@ export const documentApi = {
   },
 
   deleteDocument: async (id) => {
+    await apiClient.delete(API_ENDPOINTS.DOCUMENTS.BY_ID(id));
     try {
-      await apiClient.delete(API_ENDPOINTS.DOCUMENTS.BY_ID(id));
-    } catch (e) {
-      console.warn('Delete endpoint warning:', e);
-    }
+      const stored = JSON.parse(sessionStorage.getItem('synkdocs_deleted_ids') || '[]');
+      stored.push(id);
+      sessionStorage.setItem('synkdocs_deleted_ids', JSON.stringify(stored.slice(-50)));
+    } catch {}
     return { id };
   },
 

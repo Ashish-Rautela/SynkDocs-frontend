@@ -18,6 +18,7 @@ import {
   toggleStarSuccess,
   deleteDocumentStart,
   deleteDocumentSuccess,
+  deleteDocumentFailure,
   fetchVersionHistoryStart,
   fetchVersionHistorySuccess,
   setSearchQuery,
@@ -110,7 +111,14 @@ function* handleDeleteDocument(action) {
     yield put(deleteDocumentSuccess(data));
     yield put(addToast({ type: 'info', message: 'Document deleted successfully' }));
   } catch (error) {
-    yield put(addToast({ type: 'error', message: 'Failed to delete document' }));
+    const status = error?.response?.status;
+    const backendMsg = error?.response?.data?.message || error?.message || '';
+    yield put(deleteDocumentFailure(backendMsg));
+    if (status === 403 || backendMsg.toLowerCase().includes('owner') || backendMsg.toLowerCase().includes('own')) {
+      yield put(addToast({ type: 'error', message: "Cannot delete document: you don't own this document" }));
+    } else {
+      yield put(addToast({ type: 'error', message: backendMsg || 'Failed to delete document' }));
+    }
   }
 }
 
