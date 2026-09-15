@@ -5,6 +5,7 @@ import { editorSaga } from './sagas/editorSaga';
 import { notificationSaga } from './sagas/notificationSaga';
 import { sharingSaga } from './sagas/sharingSaga';
 import { profileSaga } from './sagas/profileSaga';
+import { teamSaga } from './sagas/teamSaga';
 
 export function* rootSaga() {
   yield all([
@@ -14,5 +15,6 @@ export function* rootSaga() {
     fork(notificationSaga),
     fork(sharingSaga),
     fork(profileSaga),
+    fork(teamSaga),
   ]);
 }

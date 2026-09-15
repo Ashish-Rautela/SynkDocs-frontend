@@ -1,12 +1,13 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { ROUTES } from '../../constants/routes';
-import { LayoutDashboard, Users, User } from 'lucide-react';
+import { LayoutDashboard, Users, User, Building2 } from 'lucide-react';
 
 export const Sidebar = () => {
   const navItems = [
     { label: 'All Documents', path: ROUTES.DASHBOARD, icon: LayoutDashboard },
     { label: 'Shared with me', path: ROUTES.SHARED, icon: Users },
+    { label: 'Teams & Workspaces', path: ROUTES.TEAMS, icon: Building2 },
     { label: 'Profile', path: ROUTES.PROFILE, icon: User },
   ];
 

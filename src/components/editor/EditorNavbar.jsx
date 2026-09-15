@@ -11,7 +11,6 @@ import { SAVE_STATUS } from '../../constants/editorConstants';
 import { getDocumentType } from '../../utils/formatters';
 import {
   FileText,
-  Star,
   Share2,
   History,
   MessageSquare,
@@ -30,7 +29,7 @@ import {
 export const EditorNavbar = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { currentDocument, toggleStar } = useDocument();
+  const { currentDocument } = useDocument();
   const {
     content,
     title,
@@ -41,12 +40,6 @@ export const EditorNavbar = () => {
     toggleCommentsPanel,
     isCommentsSidebarOpen,
   } = useEditor();
-
-  const handleStarToggle = () => {
-    if (currentDocument?.id) {
-      toggleStar(currentDocument.id);
-    }
-  };
 
   const userMenuItems = [
     { label: 'Profile Settings', icon: User, onClick: () => navigate(ROUTES.PROFILE) },
@@ -83,7 +76,7 @@ export const EditorNavbar = () => {
           </div>
 
           <div className="flex flex-col">
-            {/* Title & Star & Auto Save */}
+            {/* Title & Auto Save */}
             <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -92,18 +85,6 @@ export const EditorNavbar = () => {
                 className="font-medium text-base text-docs-darkText bg-transparent border border-transparent hover:border-docs-border focus:border-docs-blue rounded px-1.5 py-0.5 outline-none transition-all max-w-[280px] sm:max-w-xs md:max-w-md truncate"
                 placeholder="Untitled Document"
               />
-
-              <button
-                onClick={handleStarToggle}
-                className="p-1 text-docs-subtext hover:text-amber-500 rounded transition-colors"
-                title={currentDocument?.isStarred ? 'Unstar document' : 'Star document'}
-              >
-                <Star
-                  className={`w-4 h-4 ${
-                    currentDocument?.isStarred ? 'fill-amber-400 text-amber-400' : ''
-                  }`}
-                />
-              </button>
 
               {/* Auto Save Status Indicator */}
               <div className="flex items-center gap-1 px-2 py-0.5 text-xs text-docs-subtext rounded-md bg-gray-50 border border-gray-100">

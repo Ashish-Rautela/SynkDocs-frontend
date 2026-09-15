@@ -42,7 +42,10 @@ function* handleShareDocument(action) {
         userId: action.payload.targetUserId || collaborator.userId || collaborator.id,
       })
     );
-    yield put(addToast({ type: 'success', message: 'Document shared successfully' }));
+    const successMsg = action.payload.teamId
+      ? 'Document shared with team successfully'
+      : 'Document shared successfully';
+    yield put(addToast({ type: 'success', message: successMsg }));
   } catch (error) {
     const msg = error.response?.data?.message || error.message || 'Failed to share document';
     yield put(shareDocumentFailure(msg));

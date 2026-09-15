@@ -10,7 +10,6 @@ import { PendingRequestsList } from '../../components/dashboard/PendingRequestsL
 import {
   Plus,
   FileText,
-  Star,
   MoreVertical,
   Trash2,
   ExternalLink,
@@ -60,7 +59,6 @@ export const DashboardPage = () => {
     loading,
     fetchDocuments,
     createDocument,
-    toggleStar,
     deleteDocument,
     filterCategory,
     updateFilterCategory,
@@ -144,7 +142,6 @@ export const DashboardPage = () => {
           <div className="flex items-center gap-2 flex-wrap">
             {[
               { id: 'all', label: 'Recent Documents', icon: Clock },
-              { id: 'starred', label: 'Starred', icon: Star },
               { id: 'shared', label: 'Shared with me', icon: Users },
             ].map((tab) => {
               const Icon = tab.icon;
@@ -196,8 +193,6 @@ export const DashboardPage = () => {
             <div className="w-12 h-12 rounded-full bg-blue-50 text-docs-blue flex items-center justify-center mx-auto">
               {filterCategory === 'shared' ? (
                 <Users className="w-6 h-6" />
-              ) : filterCategory === 'starred' ? (
-                <Star className="w-6 h-6" />
               ) : (
                 <FileText className="w-6 h-6" />
               )}
@@ -205,15 +200,11 @@ export const DashboardPage = () => {
             <h3 className="text-base font-bold text-docs-darkText">
               {filterCategory === 'shared'
                 ? 'No shared documents'
-                : filterCategory === 'starred'
-                ? 'No starred documents'
                 : 'No documents found'}
             </h3>
             <p className="text-xs text-docs-subtext">
               {filterCategory === 'shared'
                 ? 'When someone shares a document with you, it will appear here.'
-                : filterCategory === 'starred'
-                ? 'Star important documents to quickly find them here.'
                 : 'Create your first document to start real-time editing.'}
             </p>
           </div>
@@ -232,22 +223,17 @@ export const DashboardPage = () => {
                 >
                   {/* Paper Preview Header */}
                   <div className={`h-36 ${typeConfig.previewBgClass} p-3.5 border-b border-docs-border rounded-t-2xl flex flex-col justify-between relative overflow-hidden`}>
-                    {/* Top bar inside preview: Type Badge + Star */}
+                    {/* Top bar inside preview: Type Badge */}
                     <div className="flex items-center justify-between gap-2 z-10">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border shadow-xs ${typeConfig.badgeClass}`}>
                         <TypeIcon className="w-3 h-3" />
                         {typeConfig.badgeText}
                       </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleStar(doc.id);
-                        }}
-                        className="p-1 rounded-full text-docs-subtext hover:text-amber-500 transition-colors"
-                        title={doc.isStarred ? 'Starred' : 'Not starred'}
-                      >
-                        <Star className={`w-4 h-4 ${doc.isStarred ? 'fill-amber-400 text-amber-400' : ''}`} />
-                      </button>
+                      {doc.sharedViaTeam && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs truncate max-w-[120px]">
+                          👥 {doc.sharedViaTeam.teamName || 'Team'}
+                        </span>
+                      )}
                     </div>
 
                     {/* Preview content text (no preview for notes) */}
@@ -292,7 +278,6 @@ export const DashboardPage = () => {
                       }
                       items={[
                         { label: 'Open', icon: ExternalLink, onClick: () => navigate(ROUTES.EDITOR_BUILDER(doc.id)) },
-                        { label: doc.isStarred ? 'Unstar' : 'Star', icon: Star, onClick: () => toggleStar(doc.id) },
                         { divider: true },
                         { label: 'Delete', icon: Trash2, danger: true, onClick: () => deleteDocument(doc) },
                       ]}
@@ -326,6 +311,11 @@ export const DashboardPage = () => {
                         <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${typeConfig.badgeClass}`}>
                           {typeConfig.badgeText}
                         </span>
+                        {doc.sharedViaTeam && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            👥 {doc.sharedViaTeam.teamName || 'Team'}
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-docs-subtext">{typeConfig.label} • Owner: {doc.owner?.name || 'You'}</p>
                     </div>
@@ -335,16 +325,6 @@ export const DashboardPage = () => {
                     <span className="text-xs text-docs-subtext hidden sm:inline">
                       {formatRelativeTime(doc.updatedAt)}
                     </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleStar(doc.id);
-                      }}
-                      className="p-1 text-docs-subtext hover:text-amber-500 transition-colors"
-                    >
-                      <Star className={`w-4 h-4 ${doc.isStarred ? 'fill-amber-400 text-amber-400' : ''}`} />
-                    </button>
-
                     <Dropdown
                       align="right"
                       trigger={
@@ -354,8 +334,6 @@ export const DashboardPage = () => {
                       }
                       items={[
                         { label: 'Open', icon: ExternalLink, onClick: () => navigate(ROUTES.EDITOR_BUILDER(doc.id)) },
-                        { label: doc.isStarred ? 'Unstar' : 'Star', icon: Star, onClick: () => toggleStar(doc.id) },
-                        { divider: true },
                         { label: 'Delete', icon: Trash2, danger: true, onClick: () => deleteDocument(doc) },
                       ]}
                     />

@@ -21,5 +21,11 @@ export const API_ENDPOINTS = {
   SEARCH: {
     DOCUMENTS: (query) => `/search/documents/search?q=${encodeURIComponent(query)}`,
   },
+  TEAMS: {
+    BASE: '/teams',
+    BY_ID: (teamId) => `/teams/${teamId}`,
+    MEMBERS: (teamId) => `/teams/${teamId}/members`,
+    MEMBER_BY_ID: (teamId, memberId) => `/teams/${teamId}/members/${memberId}`,
+  },
 };
 

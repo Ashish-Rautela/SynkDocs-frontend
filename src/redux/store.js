@@ -6,6 +6,7 @@ import editorReducer from './slices/editorSlice';
 import notificationReducer from './slices/notificationSlice';
 import sharingReducer from './slices/sharingSlice';
 import profileReducer from './slices/profileSlice';
+import teamReducer from './slices/teamSlice';
 import { rootSaga } from './rootSaga';
 
 const sagaMiddleware = createSagaMiddleware();
@@ -18,6 +19,7 @@ export const store = configureStore({
     notification: notificationReducer,
     sharing: sharingReducer,
     profile: profileReducer,
+    team: teamReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

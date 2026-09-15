@@ -5,6 +5,7 @@ export const ROUTES = {
   EDITOR: '/document/:id',
   EDITOR_BUILDER: (id) => `/document/${id}`,
   SHARED: '/shared-documents',
+  TEAMS: '/teams',
   PROFILE: '/profile',
   SETTINGS: '/settings',
   NOT_FOUND: '*',

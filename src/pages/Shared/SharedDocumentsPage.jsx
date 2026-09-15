@@ -81,9 +81,15 @@ export const SharedDocumentsPage = () => {
                   <div className={`p-2.5 rounded-xl shrink-0 ${typeConfig.iconBoxClass}`}>
                     <TypeIcon className="w-6 h-6" />
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
                     <Badge variant={typeConfig.badgeVariant}>{typeConfig.badgeText}</Badge>
-                    <Badge variant="gray">SHARED</Badge>
+                    {doc.sharedViaTeam ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        👥 {doc.sharedViaTeam.teamName || 'Team'}
+                      </span>
+                    ) : (
+                      <Badge variant="gray">SHARED</Badge>
+                    )}
                   </div>
                 </div>
 
