@@ -14,6 +14,8 @@ import {
   Lock,
   Unlock,
 } from 'lucide-react';
+import { computeTextDiff, applyOperation, adjustCaretOffset } from '../../utils/textSyncEngine';
+import { getCaretCharacterOffsetWithin, setCaretCharacterOffsetWithin } from '../../utils/caretUtils';
 
 const COLORS = [
   { name: 'Dark Ink', value: '#1e293b' },
@@ -41,6 +43,8 @@ export const NotesCanvas = ({ documentId }) => {
 
   const lastLocalEditTimestamp = useRef(0);
   const lastPolledContent = useRef('');
+  const lastKnownTextRef = useRef('');
+  const saveTimeoutRef = useRef(null);
 
   // Setup canvas size & scale
   useEffect(() => {
@@ -60,8 +64,11 @@ export const NotesCanvas = ({ documentId }) => {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    const initialText = pageObj?.textContent || '';
+    lastKnownTextRef.current = initialText;
+
     if (textEditorRef.current) {
-      textEditorRef.current.innerHTML = pageObj?.textContent || '';
+      textEditorRef.current.innerHTML = initialText;
     }
 
     if (pageObj?.drawingData && typeof pageObj.drawingData === 'string' && pageObj.drawingData.startsWith('data:image')) {
@@ -137,6 +144,48 @@ export const NotesCanvas = ({ documentId }) => {
     socketService.on('document-change', handleRemoteChange);
     return () => socketService.off('document-change', handleRemoteChange);
   }, [currentPageIndex]);
+
+  // Real-time character-by-character operation listener for instantaneous collaboration
+  useEffect(() => {
+    const handleRemoteOperation = (data) => {
+      const { operation, senderId } = data || {};
+      if (!operation || senderId === socketService.currentUser?.id) return;
+
+      if (operation.type === 'NOTES_TEXT_DELTA' && operation.diff) {
+        const opPageIndex = operation.pageIndex !== undefined ? operation.pageIndex : 0;
+
+        if (opPageIndex === currentPageIndex && textEditorRef.current) {
+          const isTyping = mode === 'type';
+          const currentCaret = isTyping ? getCaretCharacterOffsetWithin(textEditorRef.current) : null;
+
+          const updatedText = applyOperation(lastKnownTextRef.current, operation.diff);
+          lastKnownTextRef.current = updatedText;
+
+          // Update text DOM layer directly without touching drawing canvas
+          textEditorRef.current.innerHTML = updatedText;
+
+          // Preserve caret position adjusted for inserted/deleted characters
+          if (isTyping && currentCaret !== null) {
+            const adjustedCaret = adjustCaretOffset(currentCaret, operation.diff);
+            setCaretCharacterOffsetWithin(textEditorRef.current, adjustedCaret);
+          }
+
+          setPages((prev) =>
+            prev.map((pg, i) => (i === opPageIndex ? { ...pg, textContent: updatedText } : pg))
+          );
+        } else {
+          setPages((prev) =>
+            prev.map((pg, i) =>
+              i === opPageIndex ? { ...pg, textContent: applyOperation(pg.textContent || '', operation.diff) } : pg
+            )
+          );
+        }
+      }
+    };
+
+    socketService.on('document-op', handleRemoteOperation);
+    return () => socketService.off('document-op', handleRemoteOperation);
+  }, [currentPageIndex, mode]);
 
   // Cross-device background polling sync (every 2s) so edits on other devices display without refresh
   useEffect(() => {
@@ -319,8 +368,41 @@ export const NotesCanvas = ({ documentId }) => {
     }
   };
 
+  const debounceCloudSave = (updatedPages, idx) => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(() => {
+      saveNotesData(updatedPages, idx);
+    }, 1000);
+  };
+
   const handleTextInput = () => {
-    saveNotesData();
+    if (!textEditorRef.current) return;
+    const currentHtml = textEditorRef.current.innerHTML;
+    const diff = computeTextDiff(lastKnownTextRef.current, currentHtml, socketService.currentUser?.id);
+
+    if (diff) {
+      lastKnownTextRef.current = currentHtml;
+      lastLocalEditTimestamp.current = Date.now();
+
+      const updatedPages = pages.map((pg, i) =>
+        i === currentPageIndex ? { ...pg, textContent: currentHtml } : pg
+      );
+      setPages(updatedPages);
+
+      // Broadcast character delta immediately (0ms delay) to remote collaborators
+      if (documentId) {
+        socketService.emitOperation(documentId, {
+          type: 'NOTES_TEXT_DELTA',
+          pageIndex: currentPageIndex,
+          diff,
+        });
+      }
+
+      // Debounce full cloud save so typing stays ultra fast without canvas lagging
+      debounceCloudSave(updatedPages, currentPageIndex);
+    }
   };
 
   return (

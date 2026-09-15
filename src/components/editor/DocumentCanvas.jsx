@@ -6,6 +6,8 @@ import { socketService } from '../../socket/socket';
 import { documentApi } from '../../services/documentApi';
 import { setActiveUsers } from '../../redux/slices/editorSlice';
 import { SAVE_STATUS } from '../../constants/editorConstants';
+import { computeTextDiff, applyOperation, adjustCaretOffset } from '../../utils/textSyncEngine';
+import { getCaretCharacterOffsetWithin, setCaretCharacterOffsetWithin } from '../../utils/caretUtils';
 
 export const DocumentCanvas = ({ documentId }) => {
   const dispatch = useDispatch();
@@ -15,11 +17,13 @@ export const DocumentCanvas = ({ documentId }) => {
   const editorRef = useRef(null);
   const lastLocalEditTimestamp = useRef(0);
   const lastPolledContent = useRef('');
+  const lastKnownHtmlRef = useRef('');
 
   // Sync content with ref on initial load or local state change
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== content) {
       editorRef.current.innerHTML = content || '';
+      lastKnownHtmlRef.current = content || '';
     }
   }, [content]);
 
@@ -29,9 +33,35 @@ export const DocumentCanvas = ({ documentId }) => {
       if (data && typeof data.content === 'string') {
         if (editorRef.current && editorRef.current.innerHTML !== data.content) {
           editorRef.current.innerHTML = data.content;
+          lastKnownHtmlRef.current = data.content;
         }
         receiveRemoteContent(data.content);
         lastPolledContent.current = data.content;
+      }
+    };
+
+    // Instant character-by-character operation listener
+    const handleRemoteOperation = (data) => {
+      const { operation, senderId } = data || {};
+      if (!operation || senderId === socketService.currentUser?.id) return;
+
+      if (operation.type === 'DOC_TEXT_DELTA' && operation.diff && editorRef.current) {
+        const isFocused = document.activeElement === editorRef.current;
+        const currentCaret = isFocused ? getCaretCharacterOffsetWithin(editorRef.current) : null;
+
+        const currentText = lastKnownHtmlRef.current || editorRef.current.innerHTML;
+        const updated = applyOperation(currentText, operation.diff);
+        lastKnownHtmlRef.current = updated;
+        lastPolledContent.current = updated;
+
+        editorRef.current.innerHTML = updated;
+        receiveRemoteContent(updated);
+
+        // Preserve local caret offset so typing is never interrupted
+        if (isFocused && currentCaret !== null) {
+          const adjustedCaret = adjustCaretOffset(currentCaret, operation.diff);
+          setCaretCharacterOffsetWithin(editorRef.current, adjustedCaret);
+        }
       }
     };
 
@@ -42,10 +72,12 @@ export const DocumentCanvas = ({ documentId }) => {
     };
 
     socketService.on('document-change', handleRemoteChange);
+    socketService.on('document-op', handleRemoteOperation);
     socketService.on('presence-update', handlePresenceUpdate);
 
     return () => {
       socketService.off('document-change', handleRemoteChange);
+      socketService.off('document-op', handleRemoteOperation);
       socketService.off('presence-update', handlePresenceUpdate);
     };
   }, [dispatch, receiveRemoteContent]);
@@ -100,11 +132,19 @@ export const DocumentCanvas = ({ documentId }) => {
   const handleInput = useCallback(() => {
     if (editorRef.current) {
       const html = editorRef.current.innerHTML;
+      const diff = computeTextDiff(lastKnownHtmlRef.current, html, socketService.currentUser?.id);
+
+      lastKnownHtmlRef.current = html;
       lastLocalEditTimestamp.current = Date.now();
       lastPolledContent.current = html; // Mark current content as "known" so polling doesn't revert it
       updateContent(html);
-      if (documentId) {
-        socketService.emitDocumentChange(documentId, html);
+
+      if (documentId && diff) {
+        // Emit character delta immediately with 0ms delay to remote collaborators
+        socketService.emitOperation(documentId, {
+          type: 'DOC_TEXT_DELTA',
+          diff,
+        });
       }
     }
   }, [documentId, updateContent]);

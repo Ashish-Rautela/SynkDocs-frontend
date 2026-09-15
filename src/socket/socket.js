@@ -42,6 +42,10 @@ class SocketService {
           this.emitLocal('document-change', data);
         });
 
+        this.socket.on('document-op', (data) => {
+          this.emitLocal('document-op', data);
+        });
+
         this.socket.on('presence-update', (users) => {
           this.emitLocal('presence-update', users);
         });
@@ -94,7 +98,9 @@ class SocketService {
         const { type, payload, senderId } = event.data || {};
         if (senderId === this.currentUser?.id) return; // Ignore own broadcast
 
-        if (type === 'DOCUMENT_CHANGE') {
+        if (type === 'DOCUMENT_OP') {
+          this.emitLocal('document-op', payload);
+        } else if (type === 'DOCUMENT_CHANGE') {
           this.emitLocal('document-change', payload);
         } else if (type === 'COMMENT_ADDED') {
           this.emitLocal('comment-added', payload?.comment);
@@ -133,6 +139,14 @@ class SocketService {
         window.removeEventListener('storage', this.storageListener);
       }
       this.storageListener = (e) => {
+        if (e.key === `synkdocs_op_${documentId}` && e.newValue) {
+          try {
+            const parsed = JSON.parse(e.newValue);
+            if (parsed.senderId !== this.currentUser?.id) {
+              this.emitLocal('document-op', parsed);
+            }
+          } catch (err) {}
+        }
         if (e.key === `synkdocs_sync_${documentId}` && e.newValue) {
           try {
             const parsed = JSON.parse(e.newValue);
@@ -176,6 +190,32 @@ class SocketService {
 
     this.activeUsersMap.clear();
     this.currentDocumentId = null;
+  }
+
+  emitOperation(documentId, operation) {
+    const payload = {
+      documentId,
+      operation,
+      senderId: this.currentUser?.id,
+      timestamp: Date.now(),
+    };
+
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('document-op', payload);
+    }
+
+    if (this.broadcastChannel) {
+      this.broadcastMessage('DOCUMENT_OP', payload);
+    }
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(
+          `synkdocs_op_${documentId}`,
+          JSON.stringify({ ...payload, ts: Date.now() + Math.random() })
+        );
+      } catch (e) {}
+    }
   }
 
   emitDocumentChange(documentId, content) {
