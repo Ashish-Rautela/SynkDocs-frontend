@@ -81,11 +81,18 @@ const teamSlice = createSlice({
     },
     updateMemberRoleSuccess: (state, action) => {
       state.loading = false;
-      const { memberId, role } = action.payload;
+      const { memberId, role, permissions } = action.payload;
       if (state.currentTeam) {
-        state.currentTeam.members = (state.currentTeam.members || []).map((m) =>
-          m.userId === memberId || m.id === memberId ? { ...m, role } : m
-        );
+        state.currentTeam.members = (state.currentTeam.members || []).map((m) => {
+          if (m.userId === memberId || m.id === memberId) {
+            return {
+              ...m,
+              role: role !== undefined ? role : m.role,
+              permissions: permissions !== undefined ? { ...(m.permissions || {}), ...permissions } : m.permissions,
+            };
+          }
+          return m;
+        });
       }
     },
     updateMemberRoleFailure: (state, action) => {

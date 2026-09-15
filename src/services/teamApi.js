@@ -96,10 +96,21 @@ export const teamApi = {
     return created;
   },
 
-  addMember: async ({ teamId, email, role = 'MEMBER' }) => {
+  addMember: async ({ teamId, email, role = 'MEMBER', permissions }) => {
+    const defaultPerms = {
+      canEdit: true,
+      canShare: role === 'ADMIN',
+      canInvite: role === 'ADMIN',
+    };
+    const resolvedPerms = permissions ? { ...defaultPerms, ...permissions } : defaultPerms;
+
     let member = null;
     try {
-      const response = await apiClient.post(API_ENDPOINTS.TEAMS.MEMBERS(teamId), { email, role });
+      const response = await apiClient.post(API_ENDPOINTS.TEAMS.MEMBERS(teamId), {
+        email,
+        role,
+        permissions: resolvedPerms,
+      });
       member = response.data?.data || response.data;
     } catch (err) {
       member = {
@@ -107,6 +118,7 @@ export const teamApi = {
         email,
         name: email.split('@')[0],
         role,
+        permissions: resolvedPerms,
         joinedAt: new Date().toISOString(),
       };
     }
@@ -130,23 +142,33 @@ export const teamApi = {
     return member;
   },
 
-  updateMemberRole: async ({ teamId, memberId, role }) => {
+  updateMemberRole: async ({ teamId, memberId, role, permissions }) => {
     try {
-      const response = await apiClient.put(API_ENDPOINTS.TEAMS.MEMBER_BY_ID(teamId, memberId), { role });
+      const response = await apiClient.put(API_ENDPOINTS.TEAMS.MEMBER_BY_ID(teamId, memberId), {
+        role,
+        permissions,
+      });
       return response.data?.data || response.data;
     } catch (err) {
       const teams = getLocalTeams();
       const updated = teams.map((t) => {
         if (t.id === teamId || t.teamId === teamId) {
-          const members = (t.members || []).map((m) =>
-            m.userId === memberId || m.id === memberId ? { ...m, role } : m
-          );
+          const members = (t.members || []).map((m) => {
+            if (m.userId === memberId || m.id === memberId) {
+              return {
+                ...m,
+                role: role !== undefined ? role : m.role,
+                permissions: permissions !== undefined ? { ...(m.permissions || {}), ...permissions } : m.permissions,
+              };
+            }
+            return m;
+          });
           return { ...t, members };
         }
         return t;
       });
       saveLocalTeams(updated);
-      return { userId: memberId, role };
+      return { userId: memberId, role, permissions };
     }
   },
 

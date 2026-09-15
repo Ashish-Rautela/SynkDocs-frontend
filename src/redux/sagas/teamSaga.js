@@ -83,7 +83,7 @@ function* handleUpdateMemberRole(action) {
     yield put(
       addToast({
         type: 'success',
-        message: 'Member role updated successfully!',
+        message: 'Member permissions updated successfully!',
       })
     );
   } catch (error) {

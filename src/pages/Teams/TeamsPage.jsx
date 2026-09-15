@@ -17,9 +17,13 @@ import {
   MoreVertical,
   UserPlus,
   UserMinus,
-  Calendar,
-  Layers,
-  Sparkles,
+  Sliders,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  FileEdit,
+  Share2,
+  Key,
 } from 'lucide-react';
 
 export const TeamsPage = () => {
@@ -45,6 +49,21 @@ export const TeamsPage = () => {
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [memberEmail, setMemberEmail] = useState('');
   const [memberRole, setMemberRole] = useState('MEMBER');
+  const [memberPerms, setMemberPerms] = useState({
+    canEdit: true,
+    canShare: false,
+    canInvite: false,
+  });
+  const [showAddPerms, setShowAddPerms] = useState(false);
+
+  // Edit Member Permissions Modal state
+  const [editingMember, setEditingMember] = useState(null);
+  const [editRole, setEditRole] = useState('MEMBER');
+  const [editPerms, setEditPerms] = useState({
+    canEdit: true,
+    canShare: false,
+    canInvite: false,
+  });
 
   useEffect(() => {
     fetchTeams();
@@ -69,6 +88,17 @@ export const TeamsPage = () => {
     clearTeam();
     setMemberEmail('');
     setMemberRole('MEMBER');
+    setShowAddPerms(false);
+    setMemberPerms({ canEdit: true, canShare: false, canInvite: false });
+  };
+
+  const handleRoleChange = (role) => {
+    setMemberRole(role);
+    if (role === 'ADMIN') {
+      setMemberPerms({ canEdit: true, canShare: true, canInvite: true });
+    } else {
+      setMemberPerms({ canEdit: true, canShare: false, canInvite: false });
+    }
   };
 
   const handleAddMember = (e) => {
@@ -78,8 +108,34 @@ export const TeamsPage = () => {
       teamId: selectedTeam.id || selectedTeam.teamId,
       email: memberEmail.trim(),
       role: memberRole,
+      permissions: memberPerms,
     });
     setMemberEmail('');
+    setMemberPerms({ canEdit: true, canShare: false, canInvite: false });
+    setShowAddPerms(false);
+  };
+
+  const handleOpenEditPerms = (member) => {
+    setEditingMember(member);
+    setEditRole(member.role || 'MEMBER');
+    setEditPerms(
+      member.permissions || {
+        canEdit: true,
+        canShare: member.role === 'ADMIN',
+        canInvite: member.role === 'ADMIN',
+      }
+    );
+  };
+
+  const handleSaveEditPerms = () => {
+    if (!editingMember || !selectedTeam) return;
+    updateMemberRole({
+      teamId: selectedTeam.id || selectedTeam.teamId,
+      memberId: editingMember.userId || editingMember.id,
+      role: editRole,
+      permissions: editPerms,
+    });
+    setEditingMember(null);
   };
 
   const activeTeam = currentTeam || selectedTeam;
@@ -98,7 +154,7 @@ export const TeamsPage = () => {
           <div>
             <h1 className="text-2xl font-bold text-docs-darkText">Teams & Workspaces</h1>
             <p className="text-xs text-docs-subtext mt-0.5">
-              Organize members into teams and share documents directly with entire groups.
+              Organize members into teams, configure member permissions, and share documents with entire groups.
             </p>
           </div>
         </div>
@@ -313,11 +369,22 @@ export const TeamsPage = () => {
 
             {/* Add Member Form (Admins & Owners only) */}
             {canManageMembers && (
-              <form onSubmit={handleAddMember} className="space-y-2">
-                <label className="block text-xs font-semibold text-docs-darkText uppercase tracking-wider">
-                  Add Member to Team
-                </label>
-                <div className="flex gap-2">
+              <form onSubmit={handleAddMember} className="space-y-3 p-4 rounded-2xl border border-gray-200 bg-gray-50/50">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-docs-darkText uppercase tracking-wider">
+                    Add Member to Team
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPerms(!showAddPerms)}
+                    className="text-xs text-docs-blue hover:underline flex items-center gap-1 font-medium cursor-pointer"
+                  >
+                    <span>{showAddPerms ? 'Hide custom permissions' : 'Configure permissions'}</span>
+                    {showAddPerms ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2">
                   <div className="relative flex-1">
                     <UserPlus className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-docs-subtext" />
                     <input
@@ -332,7 +399,7 @@ export const TeamsPage = () => {
 
                   <select
                     value={memberRole}
-                    onChange={(e) => setMemberRole(e.target.value)}
+                    onChange={(e) => handleRoleChange(e.target.value)}
                     className="px-3 py-2 bg-white border border-docs-border rounded-xl text-sm font-medium text-docs-darkText focus:outline-none focus:ring-2 focus:ring-docs-blue cursor-pointer"
                   >
                     <option value="MEMBER">Member</option>
@@ -340,9 +407,49 @@ export const TeamsPage = () => {
                   </select>
 
                   <Button type="submit" variant="primary" size="sm" className="rounded-xl px-4">
-                    Add
+                    Add Member
                   </Button>
                 </div>
+
+                {/* Granular Permission Checkboxes */}
+                {showAddPerms && (
+                  <div className="p-3 bg-white border border-gray-200 rounded-xl space-y-2 mt-2">
+                    <p className="text-[11px] font-semibold text-docs-subtext uppercase tracking-wider">
+                      Permissions for this member:
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <label className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 border border-gray-100 cursor-pointer text-xs font-medium text-docs-darkText">
+                        <input
+                          type="checkbox"
+                          checked={memberPerms.canEdit}
+                          onChange={(e) => setMemberPerms({ ...memberPerms, canEdit: e.target.checked })}
+                          className="w-4 h-4 rounded text-docs-blue focus:ring-docs-blue"
+                        />
+                        <span>✏️ Edit Docs</span>
+                      </label>
+
+                      <label className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 border border-gray-100 cursor-pointer text-xs font-medium text-docs-darkText">
+                        <input
+                          type="checkbox"
+                          checked={memberPerms.canShare}
+                          onChange={(e) => setMemberPerms({ ...memberPerms, canShare: e.target.checked })}
+                          className="w-4 h-4 rounded text-docs-blue focus:ring-docs-blue"
+                        />
+                        <span>🔗 Share Docs</span>
+                      </label>
+
+                      <label className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 border border-gray-100 cursor-pointer text-xs font-medium text-docs-darkText">
+                        <input
+                          type="checkbox"
+                          checked={memberPerms.canInvite}
+                          onChange={(e) => setMemberPerms({ ...memberPerms, canInvite: e.target.checked })}
+                          className="w-4 h-4 rounded text-docs-blue focus:ring-docs-blue"
+                        />
+                        <span>👥 Invite Users</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
               </form>
             )}
 
@@ -364,6 +471,11 @@ export const TeamsPage = () => {
                   const mId = member.userId || member.id;
                   const isMemberOwner = member.role === 'OWNER' || mId === activeTeam?.ownerId;
                   const isSelf = mId === currentUserId;
+                  const perms = member.permissions || {
+                    canEdit: true,
+                    canShare: isMemberOwner || member.role === 'ADMIN',
+                    canInvite: isMemberOwner || member.role === 'ADMIN',
+                  };
 
                   return (
                     <div
@@ -373,47 +485,57 @@ export const TeamsPage = () => {
                       <div className="flex items-center gap-3 min-w-0">
                         <Avatar name={member.name || member.email} size="sm" />
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-docs-darkText truncate">
-                            {member.name || member.email?.split('@')[0]}
-                            {isSelf && <span className="ml-1.5 text-xs text-docs-blue font-normal">(You)</span>}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-docs-darkText truncate">
+                              {member.name || member.email?.split('@')[0]}
+                              {isSelf && <span className="ml-1.5 text-xs text-docs-blue font-normal">(You)</span>}
+                            </p>
+                            <span
+                              className={`px-2 py-0.2 rounded text-[10px] font-semibold border ${
+                                isMemberOwner
+                                  ? 'bg-blue-50 text-docs-blue border-blue-200'
+                                  : member.role === 'ADMIN'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : 'bg-gray-100 text-gray-700 border-gray-200'
+                              }`}
+                            >
+                              {isMemberOwner ? 'OWNER' : member.role || 'MEMBER'}
+                            </span>
+                          </div>
                           <p className="text-xs text-docs-subtext truncate">{member.email}</p>
+
+                          {/* Member Permissions Tags */}
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            {perms.canEdit && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 bg-blue-50/60 text-blue-700 text-[10px] rounded font-medium border border-blue-100">
+                                ✏️ Edit
+                              </span>
+                            )}
+                            {perms.canShare && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 bg-emerald-50/60 text-emerald-700 text-[10px] rounded font-medium border border-emerald-100">
+                                🔗 Share
+                              </span>
+                            )}
+                            {perms.canInvite && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 bg-indigo-50/60 text-indigo-700 text-[10px] rounded font-medium border border-indigo-100">
+                                👥 Invite
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${
-                            isMemberOwner
-                              ? 'bg-blue-50 text-docs-blue border-blue-200'
-                              : member.role === 'ADMIN'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-gray-100 text-gray-700 border-gray-200'
-                          }`}
-                        >
-                          {isMemberOwner ? 'OWNER' : member.role || 'MEMBER'}
-                        </span>
-
+                      <div className="flex items-center gap-1 shrink-0">
                         {/* Action buttons */}
                         {canManageMembers && !isMemberOwner && !isSelf && (
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
-                              onClick={() =>
-                                updateMemberRole({
-                                  teamId: selectedTeam.id || selectedTeam.teamId,
-                                  memberId: mId,
-                                  role: member.role === 'ADMIN' ? 'MEMBER' : 'ADMIN',
-                                })
-                              }
-                              className="p-1.5 text-docs-subtext hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors text-xs font-medium"
-                              title={member.role === 'ADMIN' ? 'Demote to Member' : 'Promote to Admin'}
+                              onClick={() => handleOpenEditPerms(member)}
+                              className="p-1.5 text-docs-subtext hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                              title="Manage Permissions"
                             >
-                              {member.role === 'ADMIN' ? (
-                                <Shield className="w-4 h-4 text-emerald-600" />
-                              ) : (
-                                <ShieldCheck className="w-4 h-4 text-gray-400 hover:text-emerald-600" />
-                              )}
+                              <Sliders className="w-4 h-4" />
                             </button>
 
                             <button
@@ -462,6 +584,132 @@ export const TeamsPage = () => {
             <div className="pt-4 border-t border-docs-border flex justify-end">
               <Button variant="primary" onClick={handleCloseTeamModal} className="rounded-xl">
                 Done
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Edit Member Permissions Modal */}
+      {editingMember && (
+        <Modal
+          isOpen={Boolean(editingMember)}
+          onClose={() => setEditingMember(null)}
+          title={`Manage Permissions: ${editingMember.name || editingMember.email}`}
+          maxWidth="max-w-md"
+        >
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+              <Avatar name={editingMember.name || editingMember.email} size="md" />
+              <div>
+                <p className="text-sm font-bold text-docs-darkText">
+                  {editingMember.name || editingMember.email?.split('@')[0]}
+                </p>
+                <p className="text-xs text-docs-subtext">{editingMember.email}</p>
+              </div>
+            </div>
+
+            {/* Role selection */}
+            <div>
+              <label className="block text-xs font-semibold text-docs-darkText mb-1.5">
+                Team Role
+              </label>
+              <select
+                value={editRole}
+                onChange={(e) => {
+                  const newRole = e.target.value;
+                  setEditRole(newRole);
+                  if (newRole === 'ADMIN') {
+                    setEditPerms({ canEdit: true, canShare: true, canInvite: true });
+                  } else {
+                    setEditPerms({ canEdit: true, canShare: false, canInvite: false });
+                  }
+                }}
+                className="w-full px-3 py-2.5 bg-white border border-docs-border rounded-xl text-sm font-medium text-docs-darkText focus:outline-none focus:ring-2 focus:ring-docs-blue cursor-pointer"
+              >
+                <option value="MEMBER">Member</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+            </div>
+
+            {/* Granular Permissions */}
+            <div>
+              <label className="block text-xs font-semibold text-docs-darkText mb-2">
+                Granular Permissions
+              </label>
+              <div className="space-y-2">
+                <label className="flex items-center justify-between p-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 bg-blue-50 text-docs-blue rounded-lg">
+                      <FileEdit className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-docs-darkText">Edit Documents</p>
+                      <p className="text-[11px] text-docs-subtext">Can edit documents shared with the team</p>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={editPerms.canEdit}
+                    onChange={(e) => setEditPerms({ ...editPerms, canEdit: e.target.checked })}
+                    className="w-4 h-4 rounded text-docs-blue focus:ring-docs-blue"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
+                      <Share2 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-docs-darkText">Share Documents</p>
+                      <p className="text-[11px] text-docs-subtext">Can share team documents with other users</p>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={editPerms.canShare}
+                    onChange={(e) => setEditPerms({ ...editPerms, canShare: e.target.checked })}
+                    className="w-4 h-4 rounded text-docs-blue focus:ring-docs-blue"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-docs-darkText">Invite Members</p>
+                      <p className="text-[11px] text-docs-subtext">Can invite new members to join the team</p>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={editPerms.canInvite}
+                    onChange={(e) => setEditPerms({ ...editPerms, canInvite: e.target.checked })}
+                    className="w-4 h-4 rounded text-docs-blue focus:ring-docs-blue"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-docs-border flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditingMember(null)}
+                className="rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={handleSaveEditPerms}
+                className="rounded-xl"
+              >
+                Save Permissions
               </Button>
             </div>
           </div>
