@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { ROUTES } from '../../constants/routes';
@@ -27,12 +27,52 @@ import {
   Activity,
   Heart,
   ExternalLink,
+  ArrowLeft,
+  Undo2,
+  Redo2,
+  Printer,
+  Bold,
+  Italic,
+  Underline,
+  Highlighter,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
+  List,
+  ListOrdered,
+  ChevronDown,
+  Plus,
+  Download,
+  PenTool,
+  Eraser,
+  Type,
+  ChevronLeft,
+  FilePlus,
+  Trash2,
+  Wifi,
 } from 'lucide-react';
+
+const PAINT_COLORS = [
+  { name: 'Dark Ink', value: '#1e293b' },
+  { name: 'Royal Blue', value: '#2563eb' },
+  { name: 'Crimson Red', value: '#dc2626' },
+  { name: 'Emerald Green', value: '#059669' },
+  { name: 'Purple', value: '#9333ea' },
+  { name: 'Amber', value: '#d97706' },
+];
 
 export const HomePage = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
-  const [activeTab, setActiveTab] = useState('doc'); // 'doc' | 'sheet' | 'notes'
+  const [activeTab, setActiveTab] = useState('notes'); // default to 'notes' to showcase the paint canvas
+
+  // Interactive paint canvas states
+  const canvasRef = useRef(null);
+  const [paintColor, setPaintColor] = useState('#1e293b');
+  const [brushSize, setBrushSize] = useState(4);
+  const [paintMode, setPaintMode] = useState('brush'); // 'brush' | 'eraser' | 'type'
+  const [isDrawing, setIsDrawing] = useState(false);
 
   // Smooth scroll helper for on-page navigation
   const scrollToSection = (id) => {
@@ -40,6 +80,150 @@ export const HomePage = () => {
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  // Draw the authentic handwritten "A S H I S H" strokes as shown in user screenshot (dynamically centered & scaled)
+  const drawSampleHandwriting = (ctx, width = 760, height = 400) => {
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#1e293b';
+
+    // Calculate responsive scale based on current canvas dimensions
+    const baseW = 720;
+    const baseH = 380;
+    const scale = Math.min(Math.max(width / baseW, 0.45), 1.2);
+    ctx.lineWidth = Math.max(2.5, 4 * scale);
+
+    // Center the strokes horizontally and vertically
+    const shiftX = Math.max(10, (width - (580 - 120) * scale) / 2 - 120 * scale);
+    const shiftY = Math.max(10, (height - (280 - 100) * scale) / 2 - 100 * scale);
+
+    // Helper to draw smooth multi-point path with scaling
+    const drawStroke = (points) => {
+      if (!points || points.length < 2) return;
+      ctx.beginPath();
+      ctx.moveTo(points[0][0] * scale + shiftX, points[0][1] * scale + shiftY);
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i][0] * scale + shiftX, points[i][1] * scale + shiftY);
+      }
+      ctx.stroke();
+    };
+
+    // 'A' (with characteristic slight forward tilt & natural hand tremble)
+    drawStroke([[140, 275], [142, 230], [150, 180], [158, 140], [163, 130]]);
+    drawStroke([[163, 130], [172, 175], [182, 225], [194, 270]]);
+    drawStroke([[146, 226], [165, 224], [183, 222]]);
+
+    // 'S'
+    drawStroke([
+      [256, 178], [242, 168], [228, 170], [220, 180], [218, 194],
+      [226, 206], [238, 214], [246, 226], [248, 240], [240, 252],
+      [226, 258], [214, 252]
+    ]);
+
+    // 'H'
+    drawStroke([[280, 155], [285, 205], [292, 256]]);
+    drawStroke([[330, 142], [334, 190], [338, 245]]);
+    drawStroke([[286, 206], [310, 202], [333, 196]]);
+
+    // 'I'
+    drawStroke([[380, 138], [412, 132]]);
+    drawStroke([[396, 135], [402, 185], [408, 236]]);
+    drawStroke([[388, 238], [420, 232]]);
+
+    // 'S'
+    drawStroke([
+      [478, 145], [464, 135], [450, 138], [442, 148], [440, 162],
+      [448, 174], [460, 182], [468, 194], [470, 208], [462, 220],
+      [448, 226], [436, 220]
+    ]);
+
+    // 'H'
+    drawStroke([[506, 118], [514, 165], [524, 218]]);
+    drawStroke([[558, 102], [568, 152], [578, 205]]);
+    drawStroke([[515, 170], [538, 162], [567, 154]]);
+
+    ctx.restore();
+  };
+
+  // Initialize or re-render canvas when switching to notes tab
+  useEffect(() => {
+    if (activeTab !== 'notes') return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const updateCanvasSize = () => {
+      const parent = canvas.parentElement;
+      const w = parent ? parent.clientWidth : 760;
+      const h = 420;
+      canvas.width = w;
+      canvas.height = h;
+      ctx.clearRect(0, 0, w, h);
+      drawSampleHandwriting(ctx, w, h);
+    };
+
+    updateCanvasSize();
+    window.addEventListener('resize', updateCanvasSize);
+    return () => window.removeEventListener('resize', updateCanvasSize);
+  }, [activeTab]);
+
+  // Drawing interactions
+  const handleStartDraw = (e) => {
+    if (paintMode === 'type') return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const ctx = canvas.getContext('2d');
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    setIsDrawing(true);
+  };
+
+  const handleDrawMove = (e) => {
+    if (!isDrawing || paintMode === 'type') return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const ctx = canvas.getContext('2d');
+    if (paintMode === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineWidth = brushSize * 4;
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = paintColor;
+      ctx.lineWidth = brushSize;
+    }
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const handleStopDraw = () => {
+    setIsDrawing(false);
+  };
+
+  const handleClearCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const handleResetSample = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawSampleHandwriting(ctx, canvas.width, canvas.height);
   };
 
   return (
@@ -152,7 +336,7 @@ export const HomePage = () => {
 
           {/* Subtitle */}
           <p className="mt-6 text-lg sm:text-xl text-docs-subtext max-w-3xl mx-auto font-normal leading-relaxed">
-            SynkDocs brings collaborative documents, real-time data sheets, and rapid engineering scratchpads into one unified canvas. Zero merge conflicts, instant multi-cursor presence, and granular enterprise permissions.
+            SynkDocs unifies rich collaborative documents, dynamic data sheets, and a freehand digital paint notepad into one seamless workspace. Zero merge conflicts, live multi-cursor presence, and fine-grained access control.
           </p>
 
           {/* Hero CTAs */}
@@ -189,7 +373,7 @@ export const HomePage = () => {
                 <Layers className="w-5 h-5 text-docs-blue" />
                 <span>3-in-1</span>
               </div>
-              <p className="text-xs text-docs-subtext mt-1">Docs, Sheets & Notes</p>
+              <p className="text-xs text-docs-subtext mt-1">Docs, Sheets &amp; Paint Notes</p>
             </div>
             <div className="p-4 rounded-2xl bg-white border border-docs-border/70 shadow-xs">
               <div className="flex items-center gap-2 text-docs-darkText font-bold text-xl sm:text-2xl">
@@ -213,13 +397,13 @@ export const HomePage = () => {
       <section id="modes" className="py-16 sm:py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-10">
           <span className="text-xs font-bold uppercase tracking-wider text-docs-blue bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-            Interactive Experience
+            Interactive Product Preview
           </span>
           <h2 className="mt-3 text-3xl sm:text-4xl font-extrabold text-docs-darkText tracking-tight">
             Engineered for seamless co-authoring.
           </h2>
           <p className="mt-2.5 text-docs-subtext text-base">
-            Switch between document types below to see how SynkDocs adapts to every stage of your team's workflow.
+            Switch between document types below to explore SynkDocs' rich text editor, computational data sheets, and freehand paint notepad.
           </p>
 
           {/* Mode Switcher Tabs */}
@@ -255,7 +439,7 @@ export const HomePage = () => {
               }`}
             >
               <NotebookPen className="w-3.5 h-3.5" />
-              <span>Quick Notes</span>
+              <span>Digital Paint &amp; Notes</span>
             </button>
           </div>
         </div>
@@ -263,19 +447,21 @@ export const HomePage = () => {
         {/* High-Fidelity Mock Canvas Window */}
         <div className="rounded-2xl border border-docs-border bg-white shadow-docs-card overflow-hidden">
           {/* Simulated App Header */}
-          <div className="px-4 py-3 bg-[#f8f9fa] border-b border-docs-border flex items-center justify-between flex-wrap gap-3">
+          <div className="px-4 py-3 bg-white border-b border-docs-border flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
-              {/* Window controls */}
-              <div className="flex items-center gap-1.5 mr-2">
-                <span className="w-3 h-3 rounded-full bg-red-400" />
-                <span className="w-3 h-3 rounded-full bg-amber-400" />
-                <span className="w-3 h-3 rounded-full bg-emerald-400" />
-              </div>
+              {/* Back button */}
+              <button
+                type="button"
+                className="p-1 rounded-lg hover:bg-gray-100 text-docs-subtext transition-colors"
+                title="Back to dashboard"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
 
               {/* Title & Document Badge */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <div
-                  className={`w-7 h-7 rounded flex items-center justify-center text-white ${
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-xs ${
                     activeTab === 'doc'
                       ? 'bg-docs-blue'
                       : activeTab === 'sheet'
@@ -290,12 +476,12 @@ export const HomePage = () => {
                 <div>
                   <h3 className="text-sm font-semibold text-docs-darkText leading-none">
                     {activeTab === 'doc' && 'Q4 Engineering Architecture & Launch Plan'}
-                    {activeTab === 'sheet' && 'Service Metrics & P99 Latency Benchmarks'}
-                    {activeTab === 'notes' && 'Sprint 42 Kickoff & Action Items'}
+                    {activeTab === 'sheet' && 'Service Latency & Infrastructure Metrics'}
+                    {activeTab === 'notes' && 'Notes'}
                   </h3>
-                  <div className="flex items-center gap-2 text-[11px] text-docs-subtext mt-0.5">
+                  <div className="flex items-center gap-2 text-[11px] text-docs-subtext mt-1">
                     <span className="flex items-center gap-1 text-emerald-600 font-medium">
-                      <Cloud className="w-3 h-3" /> All changes saved
+                      <Cloud className="w-3 h-3" /> Saved to Cloud
                     </span>
                     <span>•</span>
                     <span>Version 1.4</span>
@@ -306,176 +492,441 @@ export const HomePage = () => {
 
             {/* Collaborator Avatars & Share Button */}
             <div className="flex items-center gap-3">
-              <div className="flex items-center -space-x-2">
-                <div className="w-7 h-7 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center ring-2 ring-white" title="Ashish (You)">
-                  A
-                </div>
-                <div className="w-7 h-7 rounded-full bg-emerald-500 text-white text-xs font-bold flex items-center justify-center ring-2 ring-white" title="Sarah (Lead Architect)">
-                  S
-                </div>
-                <div className="w-7 h-7 rounded-full bg-purple-500 text-white text-xs font-bold flex items-center justify-center ring-2 ring-white" title="Elena (Security)">
-                  E
-                </div>
-                <div className="w-7 h-7 rounded-full bg-gray-200 text-docs-subtext text-[10px] font-bold flex items-center justify-center ring-2 ring-white">
-                  +3
-                </div>
-              </div>
+              <button className="p-1.5 rounded-lg hover:bg-gray-100 text-docs-subtext transition-colors" title="Comments">
+                <MessageSquare className="w-4 h-4" />
+              </button>
 
-              <div className="h-4 w-[1px] bg-docs-border hidden sm:block" />
-
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-docs-blue rounded-full text-xs font-semibold">
+              <button
+                type="button"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-docs-blue text-white rounded-lg text-xs font-semibold hover:bg-docs-hoverBlue shadow-xs transition-all"
+              >
                 <Share2 className="w-3.5 h-3.5" />
-                <span>Shared with Team</span>
+                <span>Share</span>
+              </button>
+
+              <div className="w-8 h-8 rounded-full bg-docs-blue text-white font-semibold text-xs flex items-center justify-center ring-2 ring-blue-100 shadow-xs" title="Ashish (You)">
+                A
               </div>
             </div>
           </div>
 
-          {/* Simulated Toolbar */}
-          <div className="px-4 py-2 bg-white border-b border-docs-border flex items-center gap-2 overflow-x-auto text-xs text-docs-subtext">
-            <span className="font-semibold text-docs-darkText">Normal Text</span>
-            <span className="text-gray-300">|</span>
-            <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">Inter</span>
-            <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">11</span>
-            <span className="text-gray-300">|</span>
-            <span className="font-bold text-docs-darkText px-1.5 py-0.5 hover:bg-gray-100 rounded cursor-pointer">B</span>
-            <span className="italic text-docs-darkText px-1.5 py-0.5 hover:bg-gray-100 rounded cursor-pointer">I</span>
-            <span className="underline text-docs-darkText px-1.5 py-0.5 hover:bg-gray-100 rounded cursor-pointer">U</span>
-            <span className="text-gray-300">|</span>
-            <span className="px-1.5 py-0.5 hover:bg-gray-100 rounded cursor-pointer">Align Left</span>
-            <span className="px-1.5 py-0.5 hover:bg-gray-100 rounded cursor-pointer">Numbered List</span>
-            <span className="px-1.5 py-0.5 hover:bg-gray-100 rounded cursor-pointer">Checklist</span>
-            <span className="text-gray-300">|</span>
-            <span className="flex items-center gap-1 text-emerald-600 font-medium">
-              <Activity className="w-3.5 h-3.5" />
-              <span>Realtime Connected</span>
-            </span>
-          </div>
+          {/* ─── TAB 1: COLLABORATIVE DOCUMENT TOOLBAR & CANVAS ─── */}
+          {activeTab === 'doc' && (
+            <>
+              {/* Google Docs-style Rich Text Toolbar */}
+              <div className="px-4 py-1.5 bg-docs-toolbar border-b border-docs-border flex items-center gap-1 overflow-x-auto text-xs text-docs-darkText select-none">
+                <button className="p-1.5 hover:bg-gray-200/70 rounded text-docs-subtext" title="Undo">
+                  <Undo2 className="w-3.5 h-3.5" />
+                </button>
+                <button className="p-1.5 hover:bg-gray-200/70 rounded text-docs-subtext" title="Redo">
+                  <Redo2 className="w-3.5 h-3.5" />
+                </button>
+                <button className="p-1.5 hover:bg-gray-200/70 rounded text-docs-subtext" title="Print">
+                  <Printer className="w-3.5 h-3.5" />
+                </button>
 
-          {/* Simulated Workspace Canvas Content */}
-          <div className="p-6 sm:p-10 bg-[#f1f3f4] min-h-[380px] flex justify-center">
-            {activeTab === 'doc' && (
-              <div className="w-full max-w-3xl bg-white p-8 sm:p-12 rounded-sm shadow-docs-canvas border border-docs-border/60 relative">
-                {/* Simulated Floating Realtime Cursor */}
-                <div className="absolute top-24 right-16 hidden sm:flex flex-col items-start pointer-events-none">
-                  <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-purple-600 text-white text-[10px] font-semibold shadow-xs">
-                    <MousePointer2 className="w-2.5 h-2.5" />
-                    <span>Sarah J. is editing</span>
-                  </div>
-                  <div className="w-[2px] h-5 bg-purple-600 animate-pulse ml-1" />
+                <div className="h-4 w-px bg-docs-border mx-1" />
+
+                <div className="px-2 py-1 bg-white border border-docs-border rounded text-[11px] font-medium flex items-center gap-1 cursor-pointer">
+                  <span>Normal text</span>
+                  <ChevronDown className="w-3 h-3 text-docs-subtext" />
+                </div>
+                <div className="px-2 py-1 bg-white border border-docs-border rounded text-[11px] font-medium flex items-center gap-1 cursor-pointer">
+                  <span>Inter</span>
+                  <ChevronDown className="w-3 h-3 text-docs-subtext" />
+                </div>
+                <div className="px-2 py-1 bg-white border border-docs-border rounded text-[11px] font-medium flex items-center gap-1 cursor-pointer">
+                  <span>11</span>
+                  <ChevronDown className="w-3 h-3 text-docs-subtext" />
                 </div>
 
-                {/* Simulated Doc Content */}
-                <h1 className="text-2xl sm:text-3xl font-bold text-docs-darkText mb-4">
-                  1. High-Performance Real-Time Sync Engine
-                </h1>
-                <p className="text-sm text-docs-subtext leading-relaxed mb-4">
-                  SynkDocs relies on a decoupled WebSocket architecture backed by AWS API Gateway and event-driven microservices. All document mutation operations are parsed with operational transform guarantees to eliminate conflict collisions across active editor sessions.
-                </p>
+                <div className="h-4 w-px bg-docs-border mx-1" />
 
-                <div className="my-5 p-4 rounded-xl bg-blue-50/60 border border-blue-200/70 text-sm">
-                  <div className="flex items-center gap-2 font-semibold text-docs-blue mb-1">
-                    <CheckCircle2 className="w-4 h-4 text-docs-blue" />
-                    Key Objective for Q4
+                <button className="p-1.5 hover:bg-gray-200/70 rounded bg-white shadow-xs font-bold text-docs-darkText" title="Bold">
+                  <Bold className="w-3.5 h-3.5" />
+                </button>
+                <button className="p-1.5 hover:bg-gray-200/70 rounded text-docs-darkText italic" title="Italic">
+                  <Italic className="w-3.5 h-3.5" />
+                </button>
+                <button className="p-1.5 hover:bg-gray-200/70 rounded text-docs-darkText underline" title="Underline">
+                  <Underline className="w-3.5 h-3.5" />
+                </button>
+                <button className="p-1.5 hover:bg-gray-200/70 rounded text-docs-subtext" title="Highlight">
+                  <Highlighter className="w-3.5 h-3.5" />
+                </button>
+
+                <div className="h-4 w-px bg-docs-border mx-1" />
+
+                <button className="p-1.5 hover:bg-gray-200/70 rounded bg-white shadow-xs text-docs-darkText" title="Align Left">
+                  <AlignLeft className="w-3.5 h-3.5" />
+                </button>
+                <button className="p-1.5 hover:bg-gray-200/70 rounded text-docs-subtext" title="Align Center">
+                  <AlignCenter className="w-3.5 h-3.5" />
+                </button>
+                <button className="p-1.5 hover:bg-gray-200/70 rounded text-docs-subtext" title="Align Right">
+                  <AlignRight className="w-3.5 h-3.5" />
+                </button>
+
+                <div className="h-4 w-px bg-docs-border mx-1" />
+
+                <button className="p-1.5 hover:bg-gray-200/70 rounded text-docs-subtext" title="Numbered List">
+                  <ListOrdered className="w-3.5 h-3.5" />
+                </button>
+                <button className="p-1.5 hover:bg-gray-200/70 rounded text-docs-subtext" title="Bulleted List">
+                  <List className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Document Canvas Sheet */}
+              <div className="p-6 sm:p-10 bg-[#f1f3f4] min-h-[420px] flex justify-center">
+                <div className="w-full max-w-3xl bg-white p-8 sm:p-12 rounded-sm shadow-docs-canvas border border-docs-border/60 relative">
+                  {/* Floating Collaborator Cursor */}
+                  <div className="absolute top-24 right-16 hidden sm:flex flex-col items-start pointer-events-none">
+                    <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-purple-600 text-white text-[10px] font-semibold shadow-xs">
+                      <MousePointer2 className="w-2.5 h-2.5" />
+                      <span>Sarah J. is editing</span>
+                    </div>
+                    <div className="w-[2px] h-5 bg-purple-600 animate-pulse ml-1" />
                   </div>
-                  <p className="text-xs text-docs-darkText leading-relaxed">
-                    Guarantee P99 operation broadcast latencies under 15ms while sustaining up to 100 concurrent collaborators per document canvas.
+
+                  <h1 className="text-2xl sm:text-3xl font-bold text-docs-darkText mb-4">
+                    1. High-Performance Real-Time Sync Engine
+                  </h1>
+                  <p className="text-sm text-docs-subtext leading-relaxed mb-4">
+                    SynkDocs relies on a decoupled WebSocket architecture backed by AWS API Gateway and event-driven microservices. All document mutation operations are parsed with operational transform guarantees to eliminate conflict collisions across active editor sessions.
+                  </p>
+
+                  <div className="my-5 p-4 rounded-xl bg-blue-50/60 border border-blue-200/70 text-sm">
+                    <div className="flex items-center gap-2 font-semibold text-docs-blue mb-1">
+                      <CheckCircle2 className="w-4 h-4 text-docs-blue" />
+                      Key Objective for Q4
+                    </div>
+                    <p className="text-xs text-docs-darkText leading-relaxed">
+                      Guarantee P99 operation broadcast latencies under 15ms while sustaining up to 100 concurrent collaborators per document canvas.
+                    </p>
+                  </div>
+
+                  <h2 className="text-lg font-bold text-docs-darkText mt-6 mb-2">
+                    2. Snapshot Cadence &amp; S3 Recovery
+                  </h2>
+                  <p className="text-sm text-docs-subtext leading-relaxed">
+                    Every version milestone emits a background snapshot event to AWS S3. Users can inspect the version history timeline and restore point-in-time states with a single click.
                   </p>
                 </div>
-
-                <h2 className="text-lg font-bold text-docs-darkText mt-6 mb-2">
-                  2. Snapshot Cadence & S3 Recovery
-                </h2>
-                <p className="text-sm text-docs-subtext leading-relaxed">
-                  Every version milestone emits a background snapshot event to AWS S3. Users can inspect the version history timeline and restore point-in-time states with a single click.
-                </p>
               </div>
-            )}
 
-            {activeTab === 'sheet' && (
-              <div className="w-full max-w-3xl bg-white p-6 rounded-sm shadow-docs-canvas border border-docs-border/60 overflow-x-auto">
-                <div className="mb-4 flex items-center justify-between text-xs text-docs-subtext pb-3 border-b border-docs-border">
-                  <span className="font-mono text-docs-darkText font-semibold">Formula: =AVERAGE(C2:C5)</span>
-                  <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-medium">Calculation Valid</span>
+              {/* Status Bar */}
+              <div className="flex items-center justify-between px-6 py-2 bg-white border-t border-docs-border text-xs text-docs-subtext select-none">
+                <div className="flex items-center gap-4">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <FileText className="w-3.5 h-3.5 text-docs-blue" />
+                    <span>Page 1 of 1</span>
+                  </span>
+                  <span className="h-3 w-px bg-docs-border" />
+                  <span><strong className="text-docs-darkText">842</strong> words</span>
+                  <span><strong className="text-docs-darkText">5,420</strong> characters</span>
                 </div>
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-docs-border text-docs-subtext font-semibold">
-                      <th className="p-2.5 border-r border-docs-border">#</th>
-                      <th className="p-2.5 border-r border-docs-border">Microservice</th>
-                      <th className="p-2.5 border-r border-docs-border">P99 Latency</th>
-                      <th className="p-2.5 border-r border-docs-border">Peak Load (req/s)</th>
-                      <th className="p-2.5">Health State</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-docs-border">
-                    <tr>
-                      <td className="p-2.5 font-mono text-docs-subtext border-r border-docs-border bg-gray-50/50">1</td>
-                      <td className="p-2.5 font-medium text-docs-darkText border-r border-docs-border">Auth Service (JWT)</td>
-                      <td className="p-2.5 font-mono border-r border-docs-border">12ms</td>
-                      <td className="p-2.5 font-mono border-r border-docs-border">14,200</td>
-                      <td className="p-2.5"><span className="text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">Operational</span></td>
-                    </tr>
-                    <tr>
-                      <td className="p-2.5 font-mono text-docs-subtext border-r border-docs-border bg-gray-50/50">2</td>
-                      <td className="p-2.5 font-medium text-docs-darkText border-r border-docs-border">WebSocket Broker</td>
-                      <td className="p-2.5 font-mono border-r border-docs-border">9ms</td>
-                      <td className="p-2.5 font-mono border-r border-docs-border">28,500</td>
-                      <td className="p-2.5"><span className="text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">Operational</span></td>
-                    </tr>
-                    <tr>
-                      <td className="p-2.5 font-mono text-docs-subtext border-r border-docs-border bg-gray-50/50">3</td>
-                      <td className="p-2.5 font-medium text-docs-darkText border-r border-docs-border">Document Storage (DynamoDB)</td>
-                      <td className="p-2.5 font-mono border-r border-docs-border">14ms</td>
-                      <td className="p-2.5 font-mono border-r border-docs-border">19,100</td>
-                      <td className="p-2.5"><span className="text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">Operational</span></td>
-                    </tr>
-                    <tr>
-                      <td className="p-2.5 font-mono text-docs-subtext border-r border-docs-border bg-gray-50/50">4</td>
-                      <td className="p-2.5 font-medium text-docs-darkText border-r border-docs-border">Snapshot Engine (S3)</td>
-                      <td className="p-2.5 font-mono border-r border-docs-border">18ms</td>
-                      <td className="p-2.5 font-mono border-r border-docs-border">8,400</td>
-                      <td className="p-2.5"><span className="text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">Operational</span></td>
-                    </tr>
-                  </tbody>
-                </table>
+                <div className="flex items-center gap-1 text-emerald-600 font-medium">
+                  <Wifi className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+                  <span>Multiplayer Active (Connected)</span>
+                </div>
               </div>
-            )}
+            </>
+          )}
 
-            {activeTab === 'notes' && (
-              <div className="w-full max-w-3xl bg-white p-6 sm:p-8 rounded-sm shadow-docs-canvas border border-docs-border/60">
-                <div className="flex items-center justify-between pb-3 border-b border-docs-border mb-4">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md">
-                    <NotebookPen className="w-3.5 h-3.5" />
-                    <span>Quick Scratchpad Notes</span>
+          {/* ─── TAB 2: DATA SHEET TOOLBAR & CANVAS ─── */}
+          {activeTab === 'sheet' && (
+            <>
+              {/* Spreadsheet Formula & Action Bar */}
+              <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-docs-border gap-3 flex-wrap text-xs select-none">
+                <div className="flex items-center gap-2 flex-1 min-w-[280px]">
+                  <span className="font-bold text-docs-blue bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200 text-xs">
+                    B4
+                  </span>
+                  <div className="flex-1 flex items-center bg-white border border-docs-border rounded-lg px-2.5 py-1">
+                    <span className="font-serif font-bold text-gray-400 mr-2 text-xs">fx</span>
+                    <span className="font-mono text-docs-darkText font-medium text-xs">=AVERAGE(C2:C5)</span>
                   </div>
-                  <span className="text-xs text-docs-subtext">Markdown Enabled</span>
                 </div>
 
-                <ul className="space-y-3 text-sm">
-                  <li className="flex items-start gap-2.5 text-docs-darkText">
-                    <div className="mt-0.5 w-4 h-4 rounded bg-blue-600 text-white flex items-center justify-center">
-                      <Check className="w-3 h-3" />
-                    </div>
-                    <span className="line-through text-docs-subtext">Finalize DynamoDB composite primary keys for active document partitions</span>
-                  </li>
-                  <li className="flex items-start gap-2.5 text-docs-darkText">
-                    <div className="mt-0.5 w-4 h-4 rounded bg-blue-600 text-white flex items-center justify-center">
-                      <Check className="w-3 h-3" />
-                    </div>
-                    <span className="line-through text-docs-subtext">Enable EventBridge fanout for collaborator invitation notifications</span>
-                  </li>
-                  <li className="flex items-start gap-2.5 text-docs-darkText">
-                    <div className="mt-0.5 w-4 h-4 rounded border border-gray-400 flex items-center justify-center" />
-                    <span>Benchmark multi-cursor operational transform under simulated 200ms latency jitter</span>
-                  </li>
-                  <li className="flex items-start gap-2.5 text-docs-darkText">
-                    <div className="mt-0.5 w-4 h-4 rounded border border-gray-400 flex items-center justify-center" />
-                    <span>Deploy presigned URL uploads for custom team avatars</span>
-                  </li>
-                </ul>
+                <div className="flex items-center gap-2">
+                  <button className="p-1.5 rounded-lg border border-docs-border bg-white text-docs-darkText hover:bg-gray-100" title="Bold cell">
+                    <Bold className="w-3.5 h-3.5" />
+                  </button>
+                  <button className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-docs-border bg-white hover:bg-gray-100 text-xs font-semibold text-docs-darkText">
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Row</span>
+                  </button>
+                  <button className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-docs-border bg-white hover:bg-gray-100 text-xs font-semibold text-docs-darkText">
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Col</span>
+                  </button>
+                  <button className="flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs">
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Export CSV</span>
+                  </button>
+                </div>
               </div>
-            )}
-          </div>
+
+              {/* Data Sheet Grid Container */}
+              <div className="p-6 bg-gray-100 min-h-[420px] flex justify-center overflow-x-auto">
+                <div className="w-full max-w-3xl bg-white border border-docs-border rounded-lg shadow-docs-canvas overflow-hidden">
+                  <table className="w-full border-collapse text-xs font-sans">
+                    <thead>
+                      <tr className="bg-gray-100 text-gray-600 border-b border-docs-border">
+                        <th className="w-12 py-2 border-r border-docs-border font-semibold text-center select-none bg-gray-200/60">#</th>
+                        <th className="p-2.5 border-r border-docs-border font-semibold text-left">A (Service)</th>
+                        <th className="p-2.5 border-r border-docs-border font-semibold text-left">B (P99 Latency)</th>
+                        <th className="p-2.5 border-r border-docs-border font-semibold text-left">C (Throughput req/s)</th>
+                        <th className="p-2.5 font-semibold text-left">D (Status)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-docs-border">
+                      <tr>
+                        <td className="p-2 font-mono text-center text-docs-subtext border-r border-docs-border bg-gray-50/50">1</td>
+                        <td className="p-2 font-medium text-docs-darkText border-r border-docs-border">Auth Service (JWT)</td>
+                        <td className="p-2 font-mono border-r border-docs-border">12ms</td>
+                        <td className="p-2 font-mono border-r border-docs-border">14,200</td>
+                        <td className="p-2"><span className="text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded font-semibold text-[11px]">Optimal</span></td>
+                      </tr>
+                      <tr>
+                        <td className="p-2 font-mono text-center text-docs-subtext border-r border-docs-border bg-gray-50/50">2</td>
+                        <td className="p-2 font-medium text-docs-darkText border-r border-docs-border">WebSocket Broker</td>
+                        <td className="p-2 font-mono border-r border-docs-border">9ms</td>
+                        <td className="p-2 font-mono border-r border-docs-border">28,500</td>
+                        <td className="p-2"><span className="text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded font-semibold text-[11px]">Optimal</span></td>
+                      </tr>
+                      <tr>
+                        <td className="p-2 font-mono text-center text-docs-subtext border-r border-docs-border bg-gray-50/50">3</td>
+                        <td className="p-2 font-medium text-docs-darkText border-r border-docs-border">Document Engine</td>
+                        <td className="p-2 font-mono border-r border-docs-border">14ms</td>
+                        <td className="p-2 font-mono border-r border-docs-border">19,100</td>
+                        <td className="p-2"><span className="text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded font-semibold text-[11px]">Optimal</span></td>
+                      </tr>
+                      <tr className="bg-blue-50/40">
+                        <td className="p-2 font-mono text-center text-docs-subtext border-r border-docs-border bg-gray-50/50">4</td>
+                        <td className="p-2 font-medium text-docs-darkText border-r border-docs-border">Snapshot S3 Engine</td>
+                        <td className="p-2 font-mono border-r border-docs-border font-bold text-docs-blue ring-2 ring-docs-blue ring-inset bg-white">18ms</td>
+                        <td className="p-2 font-mono border-r border-docs-border">8,400</td>
+                        <td className="p-2"><span className="text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded font-semibold text-[11px]">Optimal</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Status Bar */}
+              <div className="flex items-center justify-between px-6 py-2 bg-white border-t border-docs-border text-xs text-docs-subtext select-none">
+                <div className="flex items-center gap-4">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Sheet 1 of 1</span>
+                  </span>
+                  <span className="h-3 w-px bg-docs-border" />
+                  <span><strong className="text-docs-darkText">24</strong> cells calculated</span>
+                  <span>Formula valid: <strong className="text-emerald-700 font-mono">fx ok</strong></span>
+                </div>
+                <div className="flex items-center gap-1 text-emerald-600 font-medium">
+                  <Wifi className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+                  <span>Multiplayer Active (Connected)</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ─── TAB 3: DIGITAL PAINT & NOTES (Matching 2nd User Screenshot Exactly) ─── */}
+          {activeTab === 'notes' && (
+            <>
+              {/* Paint & Drawing Toolbar */}
+              <div className="flex items-center justify-between px-4 sm:px-6 py-2.5 bg-white border-b border-docs-border gap-2 sm:gap-3 flex-wrap text-xs select-none">
+                {/* Tool Modes */}
+                <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setPaintMode('brush')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      paintMode === 'brush'
+                        ? 'bg-docs-blue text-white shadow-xs'
+                        : 'text-docs-subtext hover:bg-white hover:text-docs-darkText'
+                    }`}
+                  >
+                    <PenTool className="w-4 h-4" />
+                    <span>Brush Pen</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaintMode('eraser')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      paintMode === 'eraser'
+                        ? 'bg-docs-blue text-white shadow-xs'
+                        : 'text-docs-subtext hover:bg-white hover:text-docs-darkText'
+                    }`}
+                  >
+                    <Eraser className="w-4 h-4" />
+                    <span>Eraser</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaintMode('type')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      paintMode === 'type'
+                        ? 'bg-docs-blue text-white shadow-xs'
+                        : 'text-docs-subtext hover:bg-white hover:text-docs-darkText'
+                    }`}
+                  >
+                    <Type className="w-4 h-4" />
+                    <span>Type Directly</span>
+                  </button>
+                </div>
+
+                {/* Scroll Locked Pill */}
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#fef3c7] border border-[#fde68a] text-amber-900 shadow-xs">
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Scroll Locked</span>
+                </div>
+
+                {/* Colors Palette */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-docs-subtext uppercase tracking-wider mr-1">
+                    COLOR:
+                  </span>
+                  {PAINT_COLORS.map((c) => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      onClick={() => setPaintColor(c.value)}
+                      style={{ backgroundColor: c.value }}
+                      className={`w-6 h-6 rounded-full transition-transform flex items-center justify-center cursor-pointer ${
+                        paintColor === c.value
+                          ? 'scale-110 ring-2 ring-docs-blue ring-offset-1'
+                          : 'hover:scale-105'
+                      }`}
+                      title={c.name}
+                    >
+                      {paintColor === c.value && <Check className="w-3.5 h-3.5 text-white" />}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Brush Thickness Slider */}
+                <div className="flex items-center gap-2 bg-gray-50 border border-docs-border px-3 py-1 rounded-xl">
+                  <span className="text-[11px] font-bold text-docs-subtext uppercase tracking-wider">
+                    SIZE:
+                  </span>
+                  <input
+                    type="range"
+                    min="1"
+                    max="20"
+                    value={brushSize}
+                    onChange={(e) => setBrushSize(Number(e.target.value))}
+                    className="w-20 accent-docs-blue cursor-pointer"
+                  />
+                  <span className="text-xs font-bold text-docs-darkText min-w-[24px]">
+                    {brushSize}px
+                  </span>
+                </div>
+
+                {/* Multi-Page Navigation Controls */}
+                <div className="flex items-center gap-1.5 bg-amber-50/80 border border-amber-200 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    disabled
+                    className="p-1 rounded-lg text-amber-900 opacity-40"
+                    title="Previous page"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+
+                  <span className="text-xs font-bold text-amber-900 px-1">
+                    Page 1 of 1
+                  </span>
+
+                  <button
+                    type="button"
+                    disabled
+                    className="p-1 rounded-lg text-amber-900 opacity-40"
+                    title="Next page"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleResetSample}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs transition-all ml-1 cursor-pointer"
+                    title="Add Page or Reset Sample"
+                  >
+                    <FilePlus className="w-3.5 h-3.5" />
+                    <span>Add Page</span>
+                  </button>
+                </div>
+
+                {/* Clear Notes Action */}
+                <button
+                  type="button"
+                  onClick={handleClearCanvas}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold transition-all cursor-pointer"
+                  title="Clear canvas"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Clear Notes</span>
+                </button>
+              </div>
+
+              {/* Lined Note Paper Pad Area (Yellow Legal Notepad with Red Margin) */}
+              <div className="p-4 sm:p-8 bg-[#f5f5f5] min-h-[440px] flex justify-center">
+                <div className="w-full max-w-[760px] min-h-[420px] bg-[#fefce8] border border-amber-200/90 rounded-xl shadow-docs-canvas relative overflow-hidden flex flex-col note-paper-pad">
+                  {/* Page indicator watermark tag */}
+                  <div className="absolute top-3 right-4 text-[11px] font-bold text-amber-800/70 bg-amber-100/70 border border-amber-200/60 px-2 py-0.5 rounded-md select-none pointer-events-none z-30">
+                    Page 1 of 1
+                  </div>
+
+                  {/* Horizontal Blue/Gray Lined Rule Lines */}
+                  <div
+                    className="absolute inset-0 pointer-events-none opacity-40"
+                    style={{
+                      backgroundImage: 'linear-gradient(#94a3b8 1px, transparent 1px)',
+                      backgroundSize: '100% 32px',
+                      marginTop: '44px',
+                    }}
+                  />
+
+                  {/* Left Red Vertical Margin Line */}
+                  <div className="absolute top-0 bottom-0 left-10 sm:left-14 w-0.5 bg-red-400/70 pointer-events-none z-10" />
+
+                  {/* Interactive HTML5 Drawing Canvas (Pre-rendered with 'ASHISH' & interactive) */}
+                  <canvas
+                    ref={canvasRef}
+                    onMouseDown={handleStartDraw}
+                    onMouseMove={handleDrawMove}
+                    onMouseUp={handleStopDraw}
+                    onMouseLeave={handleStopDraw}
+                    className="w-full h-full min-h-[420px] relative z-20 cursor-crosshair"
+                    title="Interactive Canvas: Draw or write with your mouse/pen!"
+                  />
+                </div>
+              </div>
+
+              {/* Status Bar (Matching Screenshot 2) */}
+              <div className="flex items-center justify-between px-6 py-2 bg-white border-t border-docs-border text-xs text-docs-subtext select-none">
+                <div className="flex items-center gap-4">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <FileText className="w-3.5 h-3.5 text-docs-blue" />
+                    <span>Page 1 of 1</span>
+                  </span>
+                  <span className="h-3 w-px bg-docs-border" />
+                  <span><strong className="text-docs-darkText">1</strong> words</span>
+                  <span><strong className="text-docs-darkText">38581</strong> characters</span>
+                </div>
+                <div className="flex items-center gap-1 text-emerald-600 font-medium">
+                  <Wifi className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+                  <span>Multiplayer Active (Connected)</span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </section>
 
@@ -510,14 +961,14 @@ export const HomePage = () => {
 
             {/* Feature 2 */}
             <div className="p-8 rounded-2xl bg-docs-bg border border-docs-border/80 hover:border-docs-blue/50 hover:shadow-md transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-emerald-100/70 text-emerald-700 flex items-center justify-center mb-6 group-hover:scale-105 transition-transform">
-                <Layers className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-xl bg-amber-100/70 text-amber-700 flex items-center justify-center mb-6 group-hover:scale-105 transition-transform">
+                <NotebookPen className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold text-docs-darkText mb-2">
-                Unified Tri-Modal Canvas
+                Digital Paint &amp; Freehand Canvas
               </h3>
               <p className="text-sm text-docs-subtext leading-relaxed">
-                No more jumping between three different tools. Seamlessly author long-form specifications, structured data spreadsheets, and rapid brainstorm scratchpads in one app.
+                Sketch architectures, scribble freehand formulas, or write notes with real-time multiplayer brush pens on legal-ruled notebook pads alongside your docs and spreadsheets.
               </p>
             </div>
 
@@ -527,7 +978,7 @@ export const HomePage = () => {
                 <ShieldCheck className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold text-docs-darkText mb-2">
-                Granular Access & Approvals
+                Granular Access &amp; Approvals
               </h3>
               <p className="text-sm text-docs-subtext leading-relaxed">
                 Assign explicit Owner, Editor, Commenter, and Viewer permissions. Built-in permission request flows let teammates request and receive instant document access securely.
@@ -536,14 +987,14 @@ export const HomePage = () => {
 
             {/* Feature 4 */}
             <div className="p-8 rounded-2xl bg-docs-bg border border-docs-border/80 hover:border-docs-blue/50 hover:shadow-md transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-amber-100/70 text-amber-700 flex items-center justify-center mb-6 group-hover:scale-105 transition-transform">
-                <History className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-xl bg-emerald-100/70 text-emerald-700 flex items-center justify-center mb-6 group-hover:scale-105 transition-transform">
+                <FileSpreadsheet className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold text-docs-darkText mb-2">
-                Automated Cloud Snapshots
+                High-Speed Data Sheets
               </h3>
               <p className="text-sm text-docs-subtext leading-relaxed">
-                Every revision is saved with point-in-time snapshotting. Review past milestones, inspect edits by collaborator, and revert unwanted changes with complete confidence.
+                Dynamic spreadsheet grid calculations, formulas, and tabular models built natively into the same workspace without needing third-party tools.
               </p>
             </div>
 
@@ -553,7 +1004,7 @@ export const HomePage = () => {
                 <Users className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold text-docs-darkText mb-2">
-                Team Workspaces & Sharing
+                Team Workspaces &amp; Sharing
               </h3>
               <p className="text-sm text-docs-subtext leading-relaxed">
                 Organize projects by team, track pending collaborator invitations, and share public or restricted links with zero friction.
@@ -563,13 +1014,13 @@ export const HomePage = () => {
             {/* Feature 6 */}
             <div className="p-8 rounded-2xl bg-docs-bg border border-docs-border/80 hover:border-docs-blue/50 hover:shadow-md transition-all group">
               <div className="w-12 h-12 rounded-xl bg-teal-100/70 text-teal-700 flex items-center justify-center mb-6 group-hover:scale-105 transition-transform">
-                <Search className="w-6 h-6" />
+                <History className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold text-docs-darkText mb-2">
-                Instant Discovery & Search
+                Automated Cloud Snapshots
               </h3>
               <p className="text-sm text-docs-subtext leading-relaxed">
-                Locate any document, note, or data sheet across your workspace in milliseconds with instant full-text query matching and quick category filters.
+                Every revision is saved with point-in-time snapshotting. Review past milestones, inspect edits by collaborator, and revert unwanted changes with complete confidence.
               </p>
             </div>
           </div>
@@ -638,7 +1089,7 @@ export const HomePage = () => {
                 <div className="p-3 rounded-xl bg-gray-50 border border-docs-border flex items-center justify-between">
                   <div className="flex items-center gap-2 text-docs-darkText font-medium">
                     <span className="text-docs-blue font-bold">API GATEWAY</span>
-                    <span>→ /ws & /rest</span>
+                    <span>→ /ws &amp; /rest</span>
                   </div>
                   <span className="text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded text-[11px]">Sub-15ms</span>
                 </div>
@@ -646,7 +1097,7 @@ export const HomePage = () => {
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                   <div className="p-3 rounded-lg bg-blue-50/60 border border-blue-200/50">
                     <p className="font-bold text-docs-blue">Auth Service</p>
-                    <p className="text-docs-subtext text-[10px] mt-0.5">JWT & Refresh Rotation</p>
+                    <p className="text-docs-subtext text-[10px] mt-0.5">JWT &amp; Refresh Rotation</p>
                   </div>
                   <div className="p-3 rounded-lg bg-emerald-50/60 border border-emerald-200/50">
                     <p className="font-bold text-emerald-800">Collab Engine</p>
@@ -654,7 +1105,7 @@ export const HomePage = () => {
                   </div>
                   <div className="p-3 rounded-lg bg-purple-50/60 border border-purple-200/50">
                     <p className="font-bold text-purple-800">Sharing Service</p>
-                    <p className="text-docs-subtext text-[10px] mt-0.5">RBAC & Access Control</p>
+                    <p className="text-docs-subtext text-[10px] mt-0.5">RBAC &amp; Access Control</p>
                   </div>
                   <div className="p-3 rounded-lg bg-amber-50/60 border border-amber-200/50">
                     <p className="font-bold text-amber-800">Snapshot S3</p>
@@ -731,7 +1182,7 @@ export const HomePage = () => {
                 Experience documents without friction.
               </h2>
               <p className="mt-3 text-blue-100 text-sm sm:text-base max-w-xl mx-auto">
-                Create real-time documents, data sheets, and notes in seconds. Start collaborating with your team today.
+                Create real-time documents, data sheets, and freehand paint notes in seconds. Start collaborating with your team today.
               </p>
 
               <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -793,7 +1244,7 @@ export const HomePage = () => {
                 </li>
                 <li>
                   <Link to={isAuthenticated ? ROUTES.DASHBOARD : ROUTES.LOGIN} className="hover:text-docs-blue transition-colors">
-                    Quick Notes
+                    Digital Paint &amp; Notes
                   </Link>
                 </li>
                 <li>
@@ -804,7 +1255,7 @@ export const HomePage = () => {
               </ul>
             </div>
 
-            {/* Architecture Links */}
+            {/* Platform Links */}
             <div>
               <h4 className="text-xs font-bold text-docs-darkText uppercase tracking-wider mb-3">Platform</h4>
               <ul className="space-y-2 text-xs text-docs-subtext">
