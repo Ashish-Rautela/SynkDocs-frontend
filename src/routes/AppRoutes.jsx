@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { ROUTES } from '../constants/routes';
 
 import { AppLayout } from '../components/layout/AppLayout';
@@ -9,6 +9,7 @@ import { PublicRoute } from '../components/navigation/PublicRoute';
 import { Loader } from '../components/common/Loader';
 
 // Lazy-loaded page components for code-splitting and performance
+const HomePage = lazy(() => import('../pages/Home/HomePage').then((m) => ({ default: m.HomePage })));
 const LoginPage = lazy(() => import('../pages/Login/LoginPage').then((m) => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('../pages/Register/RegisterPage').then((m) => ({ default: m.RegisterPage })));
 const DashboardPage = lazy(() => import('../pages/Dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })));
@@ -22,6 +23,9 @@ export const AppRoutes = () => {
   return (
     <Suspense fallback={<Loader fullPage text="Loading workspace..." />}>
       <Routes>
+        {/* Landing / First Page */}
+        <Route path={ROUTES.HOME} element={<HomePage />} />
+
         {/* Public Unauthenticated Routes */}
         <Route element={<PublicRoute />}>
           <Route element={<AuthLayout />}>
@@ -45,7 +49,6 @@ export const AppRoutes = () => {
         </Route>
 
         {/* Fallback & Redirects */}
-        <Route path="/" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
         <Route path={ROUTES.NOT_FOUND} element={<NotFoundPage />} />
       </Routes>
     </Suspense>

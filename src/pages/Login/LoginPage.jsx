@@ -29,7 +29,7 @@ export const LoginPage = () => {
     <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-[28px] p-8 sm:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.35)] text-white w-full">
       {/* Brand Header */}
       <div className="mb-6">
-        <p className="text-base font-semibold text-white/90 mb-1 tracking-wide">SynkDocs</p>
+        <Link to={ROUTES.HOME} className="text-base font-semibold text-white/90 hover:text-white mb-1 inline-block tracking-wide transition-opacity">SynkDocs</Link>
         <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">Login</h1>
       </div>
 

@@ -45,7 +45,7 @@ export const RegisterPage = () => {
   return (
     <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-[28px] p-8 sm:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.35)] text-white w-full space-y-5">
       <div className="space-y-1 text-left select-none">
-        <p className="text-base font-semibold text-white/90 tracking-wide">SynkDocs</p>
+        <Link to={ROUTES.HOME} className="text-base font-semibold text-white/90 hover:text-white tracking-wide inline-block transition-opacity">SynkDocs</Link>
         <h2 className="text-3xl font-bold text-white tracking-tight">Create Account</h2>
       </div>
 
